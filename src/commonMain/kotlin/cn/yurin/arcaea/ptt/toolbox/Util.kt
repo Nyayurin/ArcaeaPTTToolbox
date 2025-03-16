@@ -6,7 +6,7 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import kotlin.math.ceil
+import kotlin.math.round
 
 fun Modifier.drawToLayer(layer: GraphicsLayer) = Modifier.drawWithContent {
 	layer.record {
@@ -16,7 +16,7 @@ fun Modifier.drawToLayer(layer: GraphicsLayer) = Modifier.drawWithContent {
 }
 
 fun makePttString(ptt: Double) = buildString {
-	val list = (ceil(ptt * 10000) / 10000).toString().split('.')
+	val list = (round(ptt * 10000) / 10000).toString().split('.')
 	append(list[0])
 	append('.')
 	val fixed = list[1]
