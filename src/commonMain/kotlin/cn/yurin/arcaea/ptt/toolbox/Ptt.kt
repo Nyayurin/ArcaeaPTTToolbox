@@ -40,11 +40,12 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 	val b30 = remember { value.b30.map { it.rating }.sortedDescending() }
 	val b10 = remember { b30.take(10) }
 	val r10 = remember { value.r10.map { it.rating }.sortedDescending() }
-	val b30Ptt = remember { makePttString(b30.sum() / 30) }
-	val b10Ptt = remember { makePttString(b10.sum() / 10) }
-	val r10Ptt = remember { makePttString(r10.sum() / 10) }
-	val relPtt = remember { makePttString((b30.sum() + r10.sum()) / 40) }
-	val maxPtt = remember { makePttString((b30.sum() + b10.sum()) / 40) }
+	val b30Ptt = remember { ceilPtt(b30.sum() / 30) }
+	val b10Ptt = remember { ceilPtt(b10.sum() / 10) }
+	val r10Ptt = remember { ceilPtt(r10.sum() / 10) }
+	val relPtt = remember { ceilPtt((b30.sum() + r10.sum()) / 40) }
+	val maxPtt = remember { ceilPtt((b30.sum() + b10.sum()) / 40) }
+	val minPtt = remember { ceilPtt(b30.sum() / 40) }
 
 	BoxWithScrollbar(
 		verticalState = verticalScrollState,
@@ -132,22 +133,18 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 								horizontalArrangement = Arrangement.spacedBy(16.dp)
 							) {
 								Text(
-									text = "B30PTT: $b30Ptt"
+									text = "B30: $b30Ptt"
 								)
 								Text(
-									text = "R10PTT: $r10Ptt"
+									text = "R10: $r10Ptt"
+								)
+								Text(
+									text = "B10: $b10Ptt"
 								)
 							}
-							Row(
-								horizontalArrangement = Arrangement.spacedBy(16.dp)
-							) {
-								Text(
-									text = "MaxPTT: $maxPtt"
-								)
-								Text(
-									text = "B10PTT: $b10Ptt"
-								)
-							}
+							Text(
+								text = "Range: $maxPtt ~ $minPtt"
+							)
 						}
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
@@ -340,7 +337,7 @@ fun TrackCard(index: Int, track: Track) {
 						verticalArrangement = Arrangement.spacedBy(16.dp)
 					) {
 						Text(
-							text = makePttString(track.rating),
+							text = roundPtt(track.rating),
 							maxLines = 1,
 							style = MaterialTheme.typography.headlineLarge
 						)
