@@ -19,13 +19,13 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: Package android
-        run: ./gradlew :application:assemble
+        run: ./gradlew :assemble
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: application/build/outputs/apk/debug/application-debug.apk
+          path: build/outputs/apk/debug/ArcaeaPTTToolbox-debug.apk
   package-windows:
     runs-on: windows-latest
     permissions:
@@ -42,37 +42,37 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: package windowsUberJar
-        run: ./gradlew :application:packageUberJarForCurrentOS
+        run: ./gradlew :packageUberJarForCurrentOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: windowsUberJar
-          path: application/build/compose/jars/*
+          path: build/compose/jars/*
       - name: package windowsAppImage
-        run: ./gradlew :application:packageAppImage
+        run: ./gradlew :packageAppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: windowsAppImage
-          path: application/build/compose/binaries/main/app/*
+          path: build/compose/binaries/main/app/*
       - name: package windowsMsi
-        run: ./gradlew :application:packageMsi
+        run: ./gradlew :packageMsi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: windowsMsi
-          path: application/build/compose/binaries/main/msi/*
+          path: build/compose/binaries/main/msi/*
       - name: package windowsExe
-        run: ./gradlew :application:packageExe
+        run: ./gradlew :packageExe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: windowsExe
-          path: application/build/compose/binaries/main/exe/*
+          path: build/compose/binaries/main/exe/*
   package-linux:
     runs-on: ubuntu-latest
     permissions:
@@ -89,37 +89,37 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: package linuxUberJar
-        run: ./gradlew :application:packageUberJarForCurrentOS
+        run: ./gradlew :packageUberJarForCurrentOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linuxUberJar
-          path: application/build/compose/jars/*
+          path: build/compose/jars/*
       - name: package linuxAppImage
-        run: ./gradlew :application:packageAppImage
+        run: ./gradlew :packageAppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linuxAppImage
-          path: application/build/compose/binaries/main/app/*
+          path: build/compose/binaries/main/app/*
       - name: package linuxDeb
-        run: ./gradlew :application:packageDeb
+        run: ./gradlew :packageDeb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linuxDeb
-          path: application/build/compose/binaries/main/deb/*
+          path: build/compose/binaries/main/deb/*
       - name: package linuxRpm
-        run: ./gradlew :application:packageRpm
+        run: ./gradlew :packageRpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: linuxRpm
-          path: application/build/compose/binaries/main/rpm/*
+          path: build/compose/binaries/main/rpm/*
   package-macos:
     runs-on: macos-latest
     permissions:
@@ -136,18 +136,18 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: package macosUberJar
-        run: ./gradlew :application:packageUberJarForCurrentOS
+        run: ./gradlew :packageUberJarForCurrentOS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: macosUberJar
-          path: application/build/compose/jars/*
+          path: build/compose/jars/*
       - name: package macosDmg
-        run: ./gradlew :application:packageDmg
+        run: ./gradlew :packageDmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: macosDmg
-          path: application/build/compose/binaries/main/dmg/*
+          path: build/compose/binaries/main/dmg/*
