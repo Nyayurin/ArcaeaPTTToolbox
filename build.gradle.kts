@@ -21,7 +21,7 @@ kotlin {
 
     androidTarget()
     jvm()
-    js {
+    /*js {
         browser {
             commonWebpackConfig {
                 outputFileName = "apt.js"
@@ -36,7 +36,7 @@ kotlin {
             }
         }
         binaries.executable()
-    }
+    }*/
 
     sourceSets {
         commonMain.dependencies {
