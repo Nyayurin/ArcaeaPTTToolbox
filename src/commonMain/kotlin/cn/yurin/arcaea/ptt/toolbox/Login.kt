@@ -27,7 +27,9 @@ import io.ktor.client.call.body
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import io.ktor.http.headers
 import io.ktor.http.setCookie
 import kotlinx.coroutines.launch
@@ -101,11 +103,11 @@ fun Login(onBack: () -> Unit) {
 						val response = client.post("https://webapi.lowiro.com/auth/login") {
 							headers {
 								append(HttpHeaders.UserAgent, "ktor client")
-								append(HttpHeaders.ContentType, "application/json")
 								append(HttpHeaders.Accept, "*/*")
 								append(HttpHeaders.Host, "webapi.lowiro.com")
 							}
-							setBody("{\"email\":\"$email\",\"password\":\"$password\"}")
+							contentType(ContentType.Application.Json)
+							setBody(LoginRequest(email, password))
 						}
 						val login = response.body<Login>()
 						if (login.isLoggedIn != true) {

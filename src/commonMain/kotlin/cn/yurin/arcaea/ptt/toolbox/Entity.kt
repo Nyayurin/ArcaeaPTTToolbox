@@ -49,9 +49,15 @@ data class Login(
 	@Serializable
 	data class Error(
 		val name: String,
-		val message: Int
+		val message: String
 	)
 }
+
+@Serializable
+data class LoginRequest(
+	val email: String,
+	val password: String
+)
 
 @Serializable
 data class User(
