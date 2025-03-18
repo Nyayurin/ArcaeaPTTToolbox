@@ -68,14 +68,18 @@ fun Home(onChangePage: (Page) -> Unit) {
 				Button(
 					onClick = {
 						scope.launch {
-							val response = client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
-								cookie("sid", sid)
-							}
-							val score = response.body<Score>()
-							if (score.success) {
-								onChangePage(Page.PTT(score.value!!))
-							} else {
-								snackBarState.showSnackbar("生成失败: ${response.bodyAsText()}")
+							try {
+								val response = client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
+									cookie("sid", sid)
+								}
+								val score = response.body<Score>()
+								if (score.success) {
+									onChangePage(Page.PTT(score.value!!))
+								} else {
+									snackBarState.showSnackbar("生成失败: ${response.bodyAsText()}")
+								}
+							} catch (e: Exception) {
+								snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
 							}
 						}
 					},

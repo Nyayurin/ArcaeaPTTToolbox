@@ -95,39 +95,43 @@ fun Login(onBack: () -> Unit) {
 			Button(
 				onClick = {
 					scope.launch {
-						if (email.isEmpty() || password.isEmpty()) {
-							snackBarState.showSnackbar("账号和密码不能为空")
-							return@launch
-						}
-						state = State.Loading
-						val response = client.post("https://webapi.lowiro.com/auth/login") {
-							headers {
-								append(HttpHeaders.UserAgent, "ktor client")
-								append(HttpHeaders.Accept, "*/*")
-								append(HttpHeaders.Host, "webapi.lowiro.com")
+						try {
+							if (email.isEmpty() || password.isEmpty()) {
+								snackBarState.showSnackbar("账号和密码不能为空")
+								return@launch
 							}
-							contentType(ContentType.Application.Json)
-							setBody(LoginRequest(email, password))
-						}
-						val login = response.body<Login>()
-						if (login.isLoggedIn != true) {
-							snackBarState.showSnackbar("登陆失败: ${response.bodyAsText()}")
-							return@launch
-						}
-						sid = response.setCookie().find { it.name == "sid" }!!.value
-							.replace("%3A", ":")
-							.replace("%2B", "+")
-							.replace("%2F", "/")
-						save(sid)
-						val userResponse = loadUser(sid!!)
-						val tempUser = userResponse.body<User>()
-						if (tempUser.success) {
-							user = tempUser.value!!
-							state = State.Online
-							onBack()
-						} else {
-							state = State.Offline
-							snackBarState.showSnackbar("用户数据加载失败: ${userResponse.bodyAsText()}")
+							state = State.Loading
+							val response = client.post("https://webapi.lowiro.com/auth/login") {
+								headers {
+									append(HttpHeaders.UserAgent, "ktor client")
+									append(HttpHeaders.Accept, "*/*")
+									append(HttpHeaders.Host, "webapi.lowiro.com")
+								}
+								contentType(ContentType.Application.Json)
+								setBody(LoginRequest(email, password))
+							}
+							val login = response.body<Login>()
+							if (login.isLoggedIn != true) {
+								snackBarState.showSnackbar("登陆失败: ${response.bodyAsText()}")
+								return@launch
+							}
+							sid = response.setCookie().find { it.name == "sid" }!!.value
+								.replace("%3A", ":")
+								.replace("%2B", "+")
+								.replace("%2F", "/")
+							save(sid)
+							val userResponse = loadUser(sid!!)
+							val tempUser = userResponse.body<User>()
+							if (tempUser.success) {
+								user = tempUser.value!!
+								state = State.Online
+								onBack()
+							} else {
+								state = State.Offline
+								snackBarState.showSnackbar("用户数据加载失败: ${userResponse.bodyAsText()}")
+							}
+						} catch (e: Exception) {
+							snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
 						}
 					}
 				}
