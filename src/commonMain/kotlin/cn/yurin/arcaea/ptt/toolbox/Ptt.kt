@@ -251,9 +251,15 @@ fun TrackList(list: List<Track>) {
 @Composable
 fun TrackCard(index: Int, track: Track) {
 	Card(
+		colors = CardDefaults.cardColors(
+			containerColor = when {
+				track.far + track.lost == 0 -> MaterialTheme.colorScheme.primaryContainer
+				track.lost == 0 -> MaterialTheme.colorScheme.tertiaryContainer
+				else -> MaterialTheme.colorScheme.surfaceContainerHighest
+			}
+		),
 		shape = RoundedCornerShape(16.dp),
-		modifier = Modifier
-			.width(380.dp)
+		modifier = Modifier.width(380.dp)
 	) {
 		Column(
 			verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -338,25 +344,7 @@ fun TrackCard(index: Int, track: Track) {
 						Text(
 							text = roundPtt(track.rating),
 							maxLines = 1,
-							style = MaterialTheme.typography.headlineLarge.copy(
-								brush = when {
-									track.far + track.lost == 0 -> Brush.verticalGradient(
-										listOf(
-											Color(0xFF6B2A5C),
-											Color(0xFF337B99)
-										)
-									)
-
-									track.lost == 0 -> Brush.verticalGradient(
-										listOf(
-											Color(0xFF63406E),
-											Color(0xFF8F3482)
-										)
-									)
-
-									else -> null
-								}
-							)
+							style = MaterialTheme.typography.headlineLarge
 						)
 						Column {
 							Text(
