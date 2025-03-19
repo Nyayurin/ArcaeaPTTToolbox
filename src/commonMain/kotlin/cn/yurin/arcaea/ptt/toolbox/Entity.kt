@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Score(
 	val success: Boolean,
-	val value: Value?
+	val value: Value? = null
 ) {
 	@Serializable
 	data class Value(
