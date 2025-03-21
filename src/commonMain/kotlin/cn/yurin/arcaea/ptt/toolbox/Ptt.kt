@@ -26,7 +26,7 @@ import io.github.vinceglb.filekit.core.FileKit
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
-import kotlin.math.ceil
+import kotlin.math.round
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -40,12 +40,12 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 	val b30 = remember { value.b30.map { it.rating }.sortedDescending() }
 	val b10 = remember { b30.take(10) }
 	val r10 = remember { value.r10.map { it.rating }.sortedDescending() }
-	val b30Ptt = remember { ceilPtt(b30.sum() / 30) }
-	val b10Ptt = remember { ceilPtt(b10.sum() / 10) }
-	val r10Ptt = remember { ceilPtt(r10.sum() / 10) }
-	val relPtt = remember { ceilPtt((b30.sum() + r10.sum()) / 40) }
-	val maxPtt = remember { ceilPtt((b30.sum() + b10.sum()) / 40) }
-	val minPtt = remember { ceilPtt(b30.sum() / 40) }
+	val b30Ptt = remember { floorPtt(b30.sum() / 30) }
+	val b10Ptt = remember { floorPtt(b10.sum() / 10) }
+	val r10Ptt = remember { floorPtt(r10.sum() / 10) }
+	val relPtt = remember { floorPtt((b30.sum() + r10.sum()) / 40) }
+	val maxPtt = remember { floorPtt((b30.sum() + b10.sum()) / 40) }
+	val minPtt = remember { floorPtt(b30.sum() / 40) }
 
 	BoxWithScrollbar(
 		verticalState = verticalScrollState,
@@ -275,7 +275,7 @@ fun TrackCard(index: Int, track: Track) {
 						.padding(end = 8.dp)
 				) {
 					val chartConstant = remember {
-						ceil(
+						round(
 							when {
 								track.score >= 10000000 -> track.rating - 2
 								track.score >= 9800000 -> track.rating - 1 - (track.score - 9800000) / 200000.0
