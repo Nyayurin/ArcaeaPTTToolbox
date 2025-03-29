@@ -84,3 +84,7 @@ fun pttIcon(ptt: Double, hide: Boolean) = when {
 	ptt < 13.0 -> "https://arcwiki.mcd.blue/images/e/ee/Rating_6.png"
 	else -> "https://arcwiki.mcd.blue/images/2/22/Rating_7.png"
 }
+
+fun Track.isPM() = far + lost == 0 && score >= 10000000
+fun Track.isFR() = lost == 0
+fun Track.isEX() = score >= 9800000
