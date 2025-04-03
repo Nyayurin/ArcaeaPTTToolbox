@@ -78,7 +78,7 @@ data class User(
 		val displayName: String,
 		val character: Int,
 		@SerialName("custom_banner")
-		val customBanner: String = "a5218903700262306526a469ac22df9c"
+		val customBanner: String? = null
 	) {
 		@Serializable
 		data class CharacterStat(

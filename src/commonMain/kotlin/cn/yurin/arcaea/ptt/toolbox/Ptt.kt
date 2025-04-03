@@ -18,7 +18,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.github.panpf.sketch.AsyncImage
+import com.github.panpf.sketch.rememberAsyncImageState
+import com.github.panpf.sketch.request.LoadState
 import io.github.vinceglb.filekit.core.FileKit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
@@ -58,6 +61,10 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 		)
 	}
 	var currentDialog by remember { mutableStateOf<PTTDialog?>(null) }
+	var headerLoaded by remember { mutableStateOf(false) }
+	var b30Loaded by remember { mutableStateOf(false) }
+	var r10Loaded by remember { mutableStateOf(false) }
+	var loading by remember { mutableStateOf(false) }
 
 	BoxWithScrollbar(
 		verticalState = verticalScrollState,
@@ -66,7 +73,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 		Column {
 			TopBar(
 				layer = layer,
-				onBack = onBack
+				onBack = onBack,
+				onChangeLoading = { loading = it }
 			)
 			Box(
 				modifier = Modifier
@@ -85,7 +93,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 						Header(
 							user = user,
 							relPttFloor = relPttFloor,
-							onDialog = { currentDialog = userDialog }
+							onDialog = { currentDialog = userDialog },
+							onLoaded = { headerLoaded = true }
 						)
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
@@ -118,7 +127,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 							)
 							TrackList(
 								list = value.b30,
-								onDialog = { currentDialog = it }
+								onDialog = { currentDialog = it },
+								onLoaded = { b30Loaded = true }
 							)
 						}
 						Column(
@@ -131,7 +141,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 							)
 							TrackList(
 								list = value.r10,
-								onDialog = { currentDialog = it }
+								onDialog = { currentDialog = it },
+								onLoaded = { r10Loaded = true }
 							)
 						}
 					}
@@ -200,11 +211,24 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 				}
 			}
 		}
+		if (!(headerLoaded && b30Loaded && r10Loaded) || loading) {
+			Dialog(
+				onDismissRequest = {}
+			) {
+				Card(
+					shape = RoundedCornerShape(16.dp)
+				) {
+					CircularProgressIndicator(
+						modifier = Modifier.padding(16.dp)
+					)
+				}
+			}
+		}
 	}
 }
 
 @Composable
-fun TopBar(layer: GraphicsLayer, onBack: () -> Unit) {
+fun TopBar(layer: GraphicsLayer, onBack: () -> Unit, onChangeLoading: (Boolean) -> Unit) {
 	val scope = rememberCoroutineScope()
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
@@ -228,7 +252,8 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit) {
 		}
 		Button(
 			onClick = {
-				scope.launch {
+				scope.launch(Dispatchers.IO) {
+					onChangeLoading(true)
 					val bitmap = layer.toImageBitmap()
 					val byteArray = bitmap.toByteArray()
 					val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).format(
@@ -251,6 +276,7 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit) {
 						baseName = "ptt_$time",
 						extension = "png"
 					)
+					onChangeLoading(false)
 				}
 			}
 		) {
@@ -265,29 +291,59 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit) {
 fun Header(
 	user: User.Value,
 	relPttFloor: String,
-	onDialog: () -> Unit
+	onDialog: () -> Unit,
+	onLoaded: () -> Unit
 ) {
+	val character = remember { user.characterStats.find { it.characterId == user.character }!! }
+	val banner = remember { user.banners.find { it.id == user.customBanner } }
+	var bannerLoaded by remember { mutableStateOf(false) }
+	var characterLoaded by remember { mutableStateOf(false) }
+	var pttLoaded by remember { mutableStateOf(false) }
+	remember(bannerLoaded, characterLoaded, pttLoaded) {
+		if (characterLoaded && pttLoaded && (banner == null || bannerLoaded)) {
+			onLoaded()
+		}
+	}
 	Box {
 		Box(
 			contentAlignment = Alignment.CenterStart,
 			modifier = Modifier.height(180.dp)
 		) {
-			val character = user.characterStats.find { it.characterId == user.character }!!
-			val banner = user.banners.find { it.id == user.customBanner }!!
-			AsyncImage(
-				uri = "https://webassets.lowiro.com/${banner.resource}.png",
-				contentDescription = null,
-				modifier = Modifier
-					.size(564.dp, 74.dp)
-					.padding(start = 90.dp)
-					.graphicsLayer {
-						scaleX = -1F
-					}
-			)
+			when (banner) {
+				null -> Spacer(
+					modifier = Modifier
+						.size(564.dp, 74.dp)
+						.padding(start = 90.dp)
+				)
+				else -> AsyncImage(
+					uri = "https://webassets.lowiro.com/${banner.resource}.png",
+					contentDescription = null,
+					state = rememberAsyncImageState().apply {
+						onLoadState = {
+							if (it is LoadState.Success) {
+								bannerLoaded = true
+							}
+						}
+					},
+					modifier = Modifier
+						.size(564.dp, 74.dp)
+						.padding(start = 90.dp)
+						.graphicsLayer {
+							scaleX = -1F
+						}
+				)
+			}
 			Box {
 				AsyncImage(
 					uri = "https://webassets.lowiro.com/chr/${character.icon}.png",
 					contentDescription = null,
+					state = rememberAsyncImageState().apply {
+						onLoadState = {
+							if (it is LoadState.Success) {
+								characterLoaded = true
+							}
+						}
+					},
 					modifier = Modifier
 						.size(180.dp)
 						.clickable(onClick = onDialog)
@@ -300,6 +356,13 @@ fun Header(
 					AsyncImage(
 						uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating),
 						contentDescription = null,
+						state = rememberAsyncImageState().apply {
+							onLoadState = {
+								if (it is LoadState.Success) {
+									pttLoaded = true
+								}
+							}
+						},
 						modifier = Modifier.size(120.dp)
 					)
 					Text(
@@ -312,7 +375,7 @@ fun Header(
 		}
 		Text(
 			text = user.displayName,
-			color = Color.White,
+			color = colorOnBanner(banner?.id),
 			style = MaterialTheme.typography.headlineLarge,
 			modifier = Modifier.align(Alignment.Center)
 		)
@@ -327,7 +390,8 @@ fun Header(
 }
 
 @Composable
-fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit) {
+fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: () -> Unit) {
+	var loadedList = remember { MutableList(list.size) { false } }
 	Column(
 		verticalArrangement = Arrangement.spacedBy(16.dp)
 	) {
@@ -336,10 +400,17 @@ fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit) {
 				horizontalArrangement = Arrangement.spacedBy(16.dp)
 			) {
 				for (x in 0 until 5) {
+					val index = y * 5 + x
 					TrackCard(
-						index = y * 5 + x,
+						index = index,
 						track = list[y * 5 + x],
-						onDialog = onDialog
+						onDialog = onDialog,
+						onLoaded = {
+							loadedList[index] = true
+							if (loadedList.all { it }) {
+								onLoaded()
+							}
+						}
 					)
 				}
 			}
@@ -348,7 +419,7 @@ fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit) {
 }
 
 @Composable
-fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit) {
+fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onLoaded: () -> Unit) {
 	val chartConstant = remember {
 		round(
 			when {
@@ -431,6 +502,13 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit) {
 					AsyncImage(
 						uri = "https://webassets.lowiro.com/${track.bg}.jpg",
 						contentDescription = null,
+						state = rememberAsyncImageState().apply {
+							onLoadState = {
+								if (it is LoadState.Success) {
+									onLoaded()
+								}
+							}
+						},
 						modifier = Modifier.size(200.dp)
 					)
 					Text(

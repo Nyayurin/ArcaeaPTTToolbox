@@ -2,6 +2,7 @@ package cn.yurin.arcaea.ptt.toolbox
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import kotlinx.datetime.Clock
@@ -88,3 +89,31 @@ fun pttIcon(ptt: Double, hide: Boolean) = when {
 fun Track.isPM() = far + lost == 0 && score >= 10000000
 fun Track.isFR() = lost == 0
 fun Track.isEX() = score >= 9800000
+
+fun colorOnBanner(id: String?): Color = when (id) {
+	null -> Color.Unspecified
+//	"course_banner_1" -> TODO()
+	"course_banner_2" -> Color(56, 80, 92)
+//	"course_banner_3" -> TODO()
+	"course_banner_4" -> Color(52, 73, 94)
+//	"course_banner_5" -> TODO()
+//	"course_banner_6" -> TODO()
+//	"course_banner_7" -> TODO()
+//	"course_banner_8" -> TODO()
+//	"course_banner_9" -> TODO()
+//	"course_banner_10" -> TODO()
+//	"course_banner_11" -> TODO()
+//	"course_banner_12" -> TODO()
+//	"online_banner_2024_06" -> TODO()
+//	"online_banner_2024_07" -> TODO()
+//	"online_banner_2024_08" -> TODO()
+//	"online_banner_2024_09" -> TODO()
+//	"online_banner_2024_10" -> TODO()
+//	"online_banner_2024_11" -> TODO()
+//	"online_banner_2024_12" -> TODO()
+//	"online_banner_2025_01" -> TODO()
+	"online_banner_2025_02" -> Color(36, 30, 64)
+	"online_banner_2025_03" -> Color(252, 247, 255)
+	"online_banner_2025_04" -> Color(120, 71, 82)
+	else -> null
+} ?: Color.White
