@@ -24,13 +24,13 @@ jobs:
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: Package android
-        run: ./gradlew :assemble
+        run: ./gradlew :assembleRelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: android
-          path: build/outputs/apk/debug/ArcaeaPTTToolbox-debug.apk
+          path: build/outputs/apk/release/ArcaeaPTTToolbox-release.apk
   package-windows:
     runs-on: windows-latest
     permissions:
