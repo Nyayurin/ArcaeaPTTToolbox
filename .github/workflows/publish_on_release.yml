@@ -16,6 +16,11 @@ jobs:
           distribution: 'zulu'
       - uses: gradle/actions/setup-gradle@v4
       - run: |
+          echo "${{ secrets.SIGNING_STORE_BASE64 }}" > keystore.txt
+          openssl enc -d -base64 -in keystore.txt -out ArcaeaPTTToolbox.jks
+          echo "SIGNING_STORE_PASSWORD=${{ secrets.SIGNING_STORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "SIGNING_KEY_ALIAS=${{ secrets.SIGNING_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "SIGNING_KEY_PASSWORD=${{ secrets.SIGNING_KEY_PASSWORD }}" >> $GITHUB_ENV
           echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
           chmod +x ./gradlew
       - name: Package android
