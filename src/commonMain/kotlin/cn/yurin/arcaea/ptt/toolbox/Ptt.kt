@@ -23,6 +23,7 @@ import com.github.panpf.sketch.request.LoadState
 import io.github.vinceglb.filekit.core.FileKit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
 import kotlin.math.round
@@ -44,12 +45,6 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 	val relPtt = remember { (b30.sum() + r10.sum()) / 40 }
 	val maxPtt = remember { (b30.sum() + b10.sum()) / 40 }
 	val minPtt = remember { b30.sum() / 40 }
-	val b30PttFloor = remember { floorPtt(b30Ptt) }
-	val b10PttFloor = remember { floorPtt(b10Ptt) }
-	val r10PttFloor = remember { floorPtt(r10Ptt) }
-	val relPttFloor = remember { floorPtt(relPtt) }
-	val maxPttFloor = remember { floorPtt(maxPtt) }
-	val minPttFloor = remember { floorPtt(minPtt) }
 	val userDialog = remember {
 		PTTDialog.User(
 			b30 = b30Ptt,
@@ -88,35 +83,21 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 					Column(
 						horizontalAlignment = Alignment.CenterHorizontally,
 						verticalArrangement = Arrangement.spacedBy(32.dp),
-						modifier = Modifier.padding(16.dp)
+						modifier = Modifier
+							.padding(16.dp)
+							.width(1964.dp)
 					) {
 						Header(
 							user = user,
-							relPttFloor = relPttFloor,
+							relPttFloor = remember { floorPtt(relPtt) },
+							b30PttFloor = remember { floorPtt(b30Ptt) },
+							r10PttFloor = remember { floorPtt(r10Ptt) },
+							b10PttFloor = remember { floorPtt(b10Ptt) },
+							maxPttFloor = remember { floorPtt(maxPtt) },
+							minPttFloor = remember { floorPtt(minPtt) },
 							onDialog = { currentDialog = userDialog },
 							onLoaded = { headerLoaded = true }
 						)
-						Column(
-							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.spacedBy(8.dp),
-						) {
-							Row(
-								horizontalArrangement = Arrangement.spacedBy(16.dp)
-							) {
-								Text(
-									text = "B30: $b30PttFloor"
-								)
-								Text(
-									text = "R10: $r10PttFloor"
-								)
-								Text(
-									text = "B10: $b10PttFloor"
-								)
-							}
-							Text(
-								text = "Range: $maxPttFloor ~ $minPttFloor"
-							)
-						}
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
 							verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -252,31 +233,33 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit, onChangeLoading: (Boolean) 
 		}
 		Button(
 			onClick = {
-				scope.launch(Dispatchers.IO) {
+				scope.launch {
 					onChangeLoading(true)
 					val bitmap = layer.toImageBitmap()
-					val byteArray = bitmap.toByteArray()
-					val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).format(
-						LocalDateTime.Format {
-							year()
-							char('_')
-							monthNumber()
-							char('_')
-							dayOfMonth()
-							char('-')
-							hour()
-							char('_')
-							minute()
-							char('_')
-							second()
-						}
-					)
-					FileKit.saveFile(
-						bytes = byteArray,
-						baseName = "ptt_$time",
-						extension = "png"
-					)
-					onChangeLoading(false)
+					withContext(Dispatchers.IO) {
+						val byteArray = bitmap.toByteArray()
+						val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).format(
+							LocalDateTime.Format {
+								year()
+								char('_')
+								monthNumber()
+								char('_')
+								dayOfMonth()
+								char('-')
+								hour()
+								char('_')
+								minute()
+								char('_')
+								second()
+							}
+						)
+						FileKit.saveFile(
+							bytes = byteArray,
+							baseName = "ptt_$time",
+							extension = "png"
+						)
+						onChangeLoading(false)
+					}
 				}
 			}
 		) {
@@ -291,6 +274,11 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit, onChangeLoading: (Boolean) 
 fun Header(
 	user: User.Value,
 	relPttFloor: String,
+	b30PttFloor: String,
+	r10PttFloor: String,
+	b10PttFloor: String,
+	maxPttFloor: String,
+	minPttFloor: String,
 	onDialog: () -> Unit,
 	onLoaded: () -> Unit
 ) {
@@ -304,87 +292,123 @@ fun Header(
 			onLoaded()
 		}
 	}
-	Box {
-		Box(
-			contentAlignment = Alignment.CenterStart,
-			modifier = Modifier.height(180.dp)
-		) {
-			when (banner) {
-				null -> Spacer(
-					modifier = Modifier
-						.size(564.dp, 74.dp)
-						.padding(start = 90.dp)
-				)
-				else -> AsyncImage(
-					uri = "https://webassets.lowiro.com/${banner.resource}.png",
-					contentDescription = null,
-					state = rememberAsyncImageState().apply {
-						onLoadState = {
-							if (it is LoadState.Success) {
-								bannerLoaded = true
-							}
-						}
-					},
-					modifier = Modifier
-						.size(564.dp, 74.dp)
-						.padding(start = 90.dp)
-						.graphicsLayer {
-							scaleX = -1F
-						}
-				)
-			}
-			Box {
-				AsyncImage(
-					uri = "https://webassets.lowiro.com/chr/${character.icon}.png",
-					contentDescription = null,
-					state = rememberAsyncImageState().apply {
-						onLoadState = {
-							if (it is LoadState.Success) {
-								characterLoaded = true
-							}
-						}
-					},
-					modifier = Modifier
-						.size(180.dp)
-						.clickable(onClick = onDialog)
-				)
-				Box(
-					contentAlignment = Alignment.Center,
-					modifier = Modifier
-						.offset(80.dp, 80.dp)
-				) {
-					AsyncImage(
-						uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating),
+	Row(
+		verticalAlignment = Alignment.CenterVertically,
+		horizontalArrangement = Arrangement.SpaceBetween,
+		modifier = Modifier.fillMaxWidth()
+	) {
+		Box {
+			Box(
+				contentAlignment = Alignment.CenterStart,
+				modifier = Modifier.height(180.dp)
+			) {
+				when (banner) {
+					null -> Spacer(
+						modifier = Modifier
+							.size(564.dp, 74.dp)
+							.padding(start = 90.dp)
+					)
+					else -> AsyncImage(
+						uri = "https://webassets.lowiro.com/${banner.resource}.png",
 						contentDescription = null,
 						state = rememberAsyncImageState().apply {
 							onLoadState = {
 								if (it is LoadState.Success) {
-									pttLoaded = true
+									bannerLoaded = true
 								}
 							}
 						},
-						modifier = Modifier.size(120.dp)
-					)
-					Text(
-						text = relPttFloor,
-						color = Color.White,
-						style = MaterialTheme.typography.titleMedium
+						modifier = Modifier
+							.size(564.dp, 74.dp)
+							.padding(start = 90.dp)
+							.graphicsLayer {
+								scaleX = -1F
+							}
 					)
 				}
+				Box {
+					AsyncImage(
+						uri = "https://webassets.lowiro.com/chr/${character.icon}.png",
+						contentDescription = null,
+						state = rememberAsyncImageState().apply {
+							onLoadState = {
+								if (it is LoadState.Success) {
+									characterLoaded = true
+								}
+							}
+						},
+						modifier = Modifier
+							.size(180.dp)
+							.clickable(onClick = onDialog)
+					)
+					Box(
+						contentAlignment = Alignment.Center,
+						modifier = Modifier
+							.offset(80.dp, 80.dp)
+					) {
+						AsyncImage(
+							uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating),
+							contentDescription = null,
+							state = rememberAsyncImageState().apply {
+								onLoadState = {
+									if (it is LoadState.Success) {
+										pttLoaded = true
+									}
+								}
+							},
+							modifier = Modifier.size(120.dp)
+						)
+						Text(
+							text = relPttFloor,
+							color = Color.White,
+							style = MaterialTheme.typography.titleMedium
+						)
+					}
+				}
 			}
+			Text(
+				text = user.displayName,
+				color = colorOnBanner(banner?.id),
+				style = MaterialTheme.typography.headlineLarge,
+				modifier = Modifier
+					.align(Alignment.CenterStart)
+					.padding(start = 200.dp)
+			)
+			Text(
+				text = "ID: ${user.userCode}",
+				style = MaterialTheme.typography.titleLarge,
+				modifier = Modifier
+					.align(Alignment.BottomCenter)
+					.offset(y = (-10).dp)
+			)
 		}
+		Column(
+			horizontalAlignment = Alignment.CenterHorizontally,
+			verticalArrangement = Arrangement.spacedBy(8.dp),
+			modifier = Modifier.width(200.dp)
+		) {
+			PTTRow("B30PTT:", b30PttFloor)
+			PTTRow("R10PTT:", r10PttFloor)
+			PTTRow("B10PTT:", b10PttFloor)
+			PTTRow("MaxPTT:", maxPttFloor)
+			PTTRow("MinPTT:", minPttFloor)
+		}
+	}
+}
+
+@Composable
+fun PTTRow(left: String, right: String) {
+	Row(
+		horizontalArrangement = Arrangement.SpaceBetween,
+		modifier = Modifier.fillMaxWidth()
+	) {
 		Text(
-			text = user.displayName,
-			color = colorOnBanner(banner?.id),
-			style = MaterialTheme.typography.headlineLarge,
-			modifier = Modifier.align(Alignment.Center)
+			text = left,
+			style = MaterialTheme.typography.titleLarge
 		)
 		Text(
-			text = "ID: ${user.userCode}",
-			style = MaterialTheme.typography.titleLarge,
-			modifier = Modifier
-				.align(Alignment.BottomCenter)
-				.offset(y = (-10).dp)
+			text = right,
+			style = MaterialTheme.typography.titleLarge
 		)
 	}
 }

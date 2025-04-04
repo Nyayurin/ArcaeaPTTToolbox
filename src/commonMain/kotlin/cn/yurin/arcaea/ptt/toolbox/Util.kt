@@ -92,26 +92,26 @@ fun Track.isEX() = score >= 9800000
 
 fun colorOnBanner(id: String?): Color = when (id) {
 	null -> Color.Unspecified
-//	"course_banner_1" -> TODO()
+	"course_banner_1" -> Color(61, 87, 101)
 	"course_banner_2" -> Color(56, 80, 92)
-//	"course_banner_3" -> TODO()
+	"course_banner_3" -> Color(67, 79, 90)
 	"course_banner_4" -> Color(52, 73, 94)
-//	"course_banner_5" -> TODO()
-//	"course_banner_6" -> TODO()
-//	"course_banner_7" -> TODO()
-//	"course_banner_8" -> TODO()
-//	"course_banner_9" -> TODO()
-//	"course_banner_10" -> TODO()
-//	"course_banner_11" -> TODO()
-//	"course_banner_12" -> TODO()
-//	"online_banner_2024_06" -> TODO()
-//	"online_banner_2024_07" -> TODO()
-//	"online_banner_2024_08" -> TODO()
-//	"online_banner_2024_09" -> TODO()
-//	"online_banner_2024_10" -> TODO()
-//	"online_banner_2024_11" -> TODO()
-//	"online_banner_2024_12" -> TODO()
-//	"online_banner_2025_01" -> TODO()
+	"course_banner_5" -> Color(85, 62, 82)
+	"course_banner_6" -> Color(85, 62, 82)
+	"course_banner_7" -> Color.White
+	"course_banner_8" -> Color.White
+	"course_banner_9" -> Color.White
+	"course_banner_10" -> Color(225, 230, 229)
+	"course_banner_11" -> Color(222, 221, 228)
+	"course_banner_12" -> Color.White
+	"online_banner_2024_06" -> Color.White
+	"online_banner_2024_07" -> Color(86, 53, 71)
+	"online_banner_2024_08" -> Color.White
+	"online_banner_2024_09" -> Color(50, 20, 17)
+	"online_banner_2024_10" -> Color.White
+	"online_banner_2024_11" -> Color.White
+	"online_banner_2024_12" -> Color(225, 230, 229)
+	"online_banner_2025_01" -> Color.White
 	"online_banner_2025_02" -> Color(36, 30, 64)
 	"online_banner_2025_03" -> Color(252, 247, 255)
 	"online_banner_2025_04" -> Color(120, 71, 82)
