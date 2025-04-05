@@ -104,8 +104,8 @@ data class User(
 sealed class PTTDialog {
 	data class User(
 		val b30: Double,
-		val b10: Double,
 		val r10: Double,
+		val b10: Double,
 		val rel: Double,
 		val max: Double,
 		val min: Double

@@ -48,8 +48,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 	val userDialog = remember {
 		PTTDialog.User(
 			b30 = b30Ptt,
-			b10 = b10Ptt,
 			r10 = r10Ptt,
+			b10 = b10Ptt,
 			rel = relPtt,
 			max = maxPtt,
 			min = minPtt
@@ -150,10 +150,10 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 									text = "B30: ${it.b30}"
 								)
 								Text(
-									text = "B10: ${it.b10}"
+									text = "R10: ${it.r10}"
 								)
 								Text(
-									text = "R10: ${it.r10}"
+									text = "B10: ${it.b10}"
 								)
 								Text(
 									text = "Max: ${it.max}"
