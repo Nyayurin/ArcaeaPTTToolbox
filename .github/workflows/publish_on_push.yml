@@ -2,6 +2,8 @@ name: Package
 on:
   push:
     branches: [ master ]
+    path-ignore:
+      - 'README.md'
 jobs:
   package-android:
     runs-on: ubuntu-latest
