@@ -2,19 +2,28 @@ package cn.yurin.arcaea.ptt.toolbox
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.unit.IntSize
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlin.math.floor
 import kotlin.math.round
 
-fun Modifier.drawToLayer(layer: GraphicsLayer) = Modifier.drawWithContent {
-	layer.record {
-		this@drawWithContent.drawContent()
+fun Modifier.drawToLayer(layer: GraphicsLayer, size: IntSize) = this.drawWithContent {
+	val rawSize = this.size
+	layer.record(size) {
+		val scaleX = size.width.toFloat() / rawSize.width
+		val scaleY = size.height.toFloat() / rawSize.height
+		withTransform({ scale(scaleX, scaleY, Offset(0F, 0F)) }) {
+			this@drawWithContent.drawContent()
+		}
 	}
 	drawLayer(layer)
+	drawContent()
 }
 
 fun floorPtt(ptt: Double) = buildString {

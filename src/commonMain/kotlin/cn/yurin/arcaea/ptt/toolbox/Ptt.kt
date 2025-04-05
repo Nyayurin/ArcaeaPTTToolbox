@@ -14,29 +14,46 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.github.panpf.sketch.AsyncImage
+import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.rememberAsyncImageState
+import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.request.LoadState
+import com.github.panpf.sketch.util.Size
 import io.github.vinceglb.filekit.core.FileKit
-import io.ktor.client.call.body
-import io.ktor.client.request.cookie
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import kotlinx.coroutines.*
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
 import kotlin.math.round
 
+val dateTimeFormat = LocalDateTime.Format {
+	year()
+	char('-')
+	monthNumber()
+	char('-')
+	dayOfMonth()
+	char(' ')
+	hour()
+	char(':')
+	minute()
+	char(':')
+	second()
+}
+
 @Composable
 fun PTT(value: Score.Value, onBack: () -> Unit) {
 	var score by remember { mutableStateOf(value) }
+	var instant by remember { mutableStateOf(Clock.System.now()) }
 	val user = remember { user!! }
 
 	val layer = rememberGraphicsLayer()
@@ -64,10 +81,16 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 		)
 	}
 	var currentDialog by remember { mutableStateOf<PTTDialog?>(null) }
-	var headerLoaded by remember { mutableStateOf(false) }
-	var b30Loaded by remember { mutableStateOf(false) }
-	var r10Loaded by remember { mutableStateOf(false) }
+	val imageCount = remember { 2 + (user.customBanner?.let { 1 } ?: 0) + (score.b30.size + score.r10.size) }
+	var imageLoaded by remember { mutableStateOf(0) }
 	var loading by remember { mutableStateOf(false) }
+
+	LaunchedEffect(Unit) {
+		while (true) {
+			delay(100)
+			instant = Clock.System.now()
+		}
+	}
 
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
@@ -80,6 +103,7 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 				TopBar(
 					layer = layer,
 					snackBarState = snackBarState,
+					instant = instant,
 					onBack = onBack,
 					onChangeLoading = { loading = it },
 					onChangeScore = { score = it }
@@ -89,16 +113,26 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 						.verticalScroll(verticalScrollState)
 						.horizontalScroll(horizontalScrollState)
 				) {
+					val density = LocalDensity.current
+					var dpSize by remember { mutableStateOf(IntSize.Zero) }
 					Surface(
 						color = MaterialTheme.colorScheme.background,
-						modifier = Modifier.drawToLayer(layer)
+						modifier = Modifier.drawToLayer(layer, dpSize)
 					) {
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
 							verticalArrangement = Arrangement.spacedBy(32.dp),
 							modifier = Modifier
+								.onSizeChanged {
+									dpSize = with(density) {
+										IntSize(
+											width = it.width.toDp().value.toInt(),
+											height = it.height.toDp().value.toInt()
+										)
+									}
+								}
 								.padding(16.dp)
-								.width(1964.dp)
+								.width(1464.dp)
 						) {
 							Header(
 								user = user,
@@ -109,12 +143,13 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 								maxPttFloor = remember { floorPtt(maxPtt) },
 								minPttFloor = remember { floorPtt(minPtt) },
 								onDialog = { currentDialog = userDialog },
-								onLoaded = { headerLoaded = true }
+								onLoaded = { imageLoaded++ }
 							)
 							Column(
 								horizontalAlignment = Alignment.CenterHorizontally,
 								verticalArrangement = Arrangement.spacedBy(8.dp)
 							) {
+								HorizontalDivider()
 								Text(
 									text = "Best 30",
 									style = MaterialTheme.typography.headlineLarge
@@ -122,13 +157,14 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 								TrackList(
 									list = score.b30,
 									onDialog = { currentDialog = it },
-									onLoaded = { b30Loaded = true }
+									onLoaded = { imageLoaded++ }
 								)
 							}
 							Column(
 								horizontalAlignment = Alignment.CenterHorizontally,
 								verticalArrangement = Arrangement.spacedBy(8.dp)
 							) {
+								HorizontalDivider()
 								Text(
 									text = "Recent 10",
 									style = MaterialTheme.typography.headlineLarge
@@ -136,9 +172,20 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 								TrackList(
 									list = score.r10,
 									onDialog = { currentDialog = it },
-									onLoaded = { r10Loaded = true }
+									onLoaded = { imageLoaded++ }
 								)
 							}
+							Text(
+								text = buildString {
+									append("Generated by Arcaea PTT Toolbox")
+									append("(https://github.com/Nyayurin/ArcaeaPTTToolbox)")
+									append(" @ ")
+									append(
+										instant.toLocalDateTime(TimeZone.currentSystemDefault()).format(dateTimeFormat)
+									)
+								},
+								style = MaterialTheme.typography.headlineSmall
+							)
 						}
 					}
 				}
@@ -195,9 +242,10 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 											text = "PTT: ${it.ptt}"
 										)
 										Text(
-											text = "Time: ${
+											text = "Play at: ${
 												Instant.fromEpochMilliseconds(it.timestamp)
 													.toLocalDateTime(TimeZone.currentSystemDefault())
+													.format(dateTimeFormat)
 											}"
 										)
 									}
@@ -207,16 +255,26 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 					}
 				}
 			}
-			if (!(headerLoaded && b30Loaded && r10Loaded) || loading) {
+			if (imageLoaded != imageCount || loading) {
 				Dialog(
 					onDismissRequest = {}
 				) {
 					Card(
 						shape = RoundedCornerShape(16.dp)
 					) {
-						CircularProgressIndicator(
-							modifier = Modifier.padding(16.dp)
-						)
+						Column(
+							horizontalAlignment = Alignment.CenterHorizontally,
+							verticalArrangement = Arrangement.spacedBy(16.dp)
+						) {
+							if (imageLoaded != imageCount) {
+								Text(
+									text = "加载图片中($imageLoaded/$imageCount)"
+								)
+							}
+							CircularProgressIndicator(
+								modifier = Modifier.padding(16.dp)
+							)
+						}
 					}
 				}
 			}
@@ -228,6 +286,7 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 fun TopBar(
 	layer: GraphicsLayer,
 	snackBarState: SnackbarHostState,
+	instant: Instant,
 	onBack: () -> Unit,
 	onChangeLoading: (Boolean) -> Unit,
 	onChangeScore: (Score.Value) -> Unit
@@ -260,7 +319,7 @@ fun TopBar(
 					val bitmap = layer.toImageBitmap()
 					withContext(Dispatchers.IO) {
 						val byteArray = bitmap.toByteArray()
-						val time = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).format(
+						val time = instant.toLocalDateTime(TimeZone.currentSystemDefault()).format(
 							LocalDateTime.Format {
 								year()
 								char('_')
@@ -277,7 +336,7 @@ fun TopBar(
 						)
 						FileKit.saveFile(
 							bytes = byteArray,
-							baseName = "ptt_$time",
+							baseName = "PTT_$time",
 							extension = "png"
 						)
 						onChangeLoading(false)
@@ -340,14 +399,6 @@ fun Header(
 ) {
 	val character = remember { user.characterStats.find { it.characterId == user.character }!! }
 	val banner = remember { user.banners.find { it.id == user.customBanner } }
-	var bannerLoaded by remember { mutableStateOf(false) }
-	var characterLoaded by remember { mutableStateOf(false) }
-	var pttLoaded by remember { mutableStateOf(false) }
-	remember(bannerLoaded, characterLoaded, pttLoaded) {
-		if (characterLoaded && pttLoaded && (banner == null || bannerLoaded)) {
-			onLoaded()
-		}
-	}
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.SpaceBetween,
@@ -366,12 +417,18 @@ fun Header(
 					)
 
 					else -> AsyncImage(
-						uri = "https://webassets.lowiro.com/${banner.resource}.png",
+						request = ImageRequest
+							.Builder(
+								context = LocalPlatformContext.current,
+								uri = "https://webassets.lowiro.com/${banner.resource}.png"
+							)
+							.size(Size.Origin)
+							.build(),
 						contentDescription = null,
 						state = rememberAsyncImageState().apply {
 							onLoadState = {
 								if (it is LoadState.Success) {
-									bannerLoaded = true
+									onLoaded()
 								}
 							}
 						},
@@ -385,17 +442,23 @@ fun Header(
 				}
 				Box {
 					AsyncImage(
-						uri = "https://webassets.lowiro.com/chr/${character.icon}.png",
+						request = ImageRequest
+							.Builder(
+								context = LocalPlatformContext.current,
+								uri = "https://webassets.lowiro.com/chr/${character.icon}.png"
+							)
+							.size(Size.Origin)
+							.build(),
 						contentDescription = null,
 						state = rememberAsyncImageState().apply {
 							onLoadState = {
 								if (it is LoadState.Success) {
-									characterLoaded = true
+									onLoaded()
 								}
 							}
 						},
 						modifier = Modifier
-							.size(180.dp)
+							.size(170.dp)
 							.clickable(onClick = onDialog)
 					)
 					Box(
@@ -404,12 +467,18 @@ fun Header(
 							.offset(80.dp, 80.dp)
 					) {
 						AsyncImage(
-							uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating),
+							request = ImageRequest
+								.Builder(
+									context = LocalPlatformContext.current,
+									uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating)
+								)
+								.size(Size.Origin)
+								.build(),
 							contentDescription = null,
 							state = rememberAsyncImageState().apply {
 								onLoadState = {
 									if (it is LoadState.Success) {
-										pttLoaded = true
+										onLoaded()
 									}
 								}
 							},
@@ -472,7 +541,6 @@ fun PTTRow(left: String, right: String) {
 
 @Composable
 fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: () -> Unit) {
-	var loadedList = remember { MutableList(list.size) { false } }
 	Column(
 		verticalArrangement = Arrangement.spacedBy(16.dp)
 	) {
@@ -486,12 +554,7 @@ fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: 
 						index = index,
 						track = list[y * 5 + x],
 						onDialog = onDialog,
-						onLoaded = {
-							loadedList[index] = true
-							if (loadedList.all { it }) {
-								onLoaded()
-							}
-						}
+						onLoaded = onLoaded
 					)
 				}
 			}
@@ -531,7 +594,7 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 			}
 		),
 		shape = RoundedCornerShape(16.dp),
-		modifier = Modifier.width(380.dp)
+		modifier = Modifier.width(280.dp)
 	) {
 		Column(
 			verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -549,7 +612,7 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 					Text(
 						text = "[${Difficult.entries[track.difficulty]}$chartConstant]",
 						maxLines = 1,
-						style = MaterialTheme.typography.titleLarge,
+						style = MaterialTheme.typography.titleSmall,
 						color = when (Difficult.entries[track.difficulty]) {
 							Difficult.PST -> Color(0xFF328AA0)
 							Difficult.PRS -> Color(0xFF8C9B51)
@@ -561,14 +624,14 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 					Text(
 						text = track.title.en,
 						maxLines = 1,
-						style = MaterialTheme.typography.titleLarge,
+						style = MaterialTheme.typography.titleSmall,
 						overflow = TextOverflow.Ellipsis
 					)
 				}
 				Text(
 					text = "#${index + 1}",
 					maxLines = 1,
-					style = MaterialTheme.typography.titleLarge
+					style = MaterialTheme.typography.titleSmall
 				)
 			}
 			Row(
@@ -577,11 +640,14 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 			) {
 				Box(
 					modifier = Modifier
-						.size(200.dp)
+						.size(150.dp)
 						.clip(RoundedCornerShape(8.dp))
 				) {
 					AsyncImage(
-						uri = "https://webassets.lowiro.com/${track.bg}.jpg",
+						request = ImageRequest
+							.Builder(LocalPlatformContext.current, "https://webassets.lowiro.com/${track.bg}.jpg")
+							.size(Size.Origin)
+							.build(),
 						contentDescription = null,
 						state = rememberAsyncImageState().apply {
 							onLoadState = {
@@ -590,13 +656,13 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 								}
 							}
 						},
-						modifier = Modifier.size(200.dp)
+						modifier = Modifier.fillMaxSize()
 					)
 					Text(
 						text = makeScoreString(track.score),
 						maxLines = 1,
 						color = Color.White,
-						style = MaterialTheme.typography.headlineLarge,
+						style = MaterialTheme.typography.headlineSmall,
 						textAlign = TextAlign.Center,
 						modifier = Modifier
 							.align(Alignment.BottomCenter)
@@ -614,7 +680,7 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 						Text(
 							text = roundPtt(track.rating),
 							maxLines = 1,
-							style = MaterialTheme.typography.headlineLarge
+							style = MaterialTheme.typography.headlineSmall
 						)
 						Column {
 							Text(
@@ -627,21 +693,21 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 									)
 								})",
 								maxLines = 1,
-								style = MaterialTheme.typography.bodyLarge.copy(
+								style = MaterialTheme.typography.bodySmall.copy(
 									brush = Brush.verticalGradient(listOf(Color(0xFF9B1691), Color(0xFF4176B9)))
 								),
 							)
 							Text(
 								text = "F: ${track.far}",
 								maxLines = 1,
-								style = MaterialTheme.typography.bodyLarge.copy(
+								style = MaterialTheme.typography.bodySmall.copy(
 									brush = Brush.verticalGradient(listOf(Color(0xFFB86800), Color(0xFFD29400)))
 								),
 							)
 							Text(
 								text = "L: ${track.lost}",
 								maxLines = 1,
-								style = MaterialTheme.typography.bodyLarge.copy(
+								style = MaterialTheme.typography.bodySmall.copy(
 									brush = Brush.verticalGradient(listOf(Color(0xFFDE0B4C), Color(0xFF633348)))
 								),
 							)
@@ -649,7 +715,7 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 						Text(
 							text = calculatorTime(track.time),
 							maxLines = 1,
-							style = MaterialTheme.typography.bodyLarge
+							style = MaterialTheme.typography.bodySmall
 						)
 					}
 				}
