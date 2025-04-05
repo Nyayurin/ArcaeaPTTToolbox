@@ -3,6 +3,7 @@ package cn.yurin.arcaea.ptt.toolbox
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +22,12 @@ import com.github.panpf.sketch.AsyncImage
 import com.github.panpf.sketch.rememberAsyncImageState
 import com.github.panpf.sketch.request.LoadState
 import io.github.vinceglb.filekit.core.FileKit
+import io.ktor.client.call.body
+import io.ktor.client.request.cookie
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
@@ -30,15 +36,17 @@ import kotlin.math.round
 
 @Composable
 fun PTT(value: Score.Value, onBack: () -> Unit) {
+	var score by remember { mutableStateOf(value) }
 	val user = remember { user!! }
 
 	val layer = rememberGraphicsLayer()
 	val verticalScrollState = rememberScrollState()
 	val horizontalScrollState = rememberScrollState()
+	val snackBarState = remember { SnackbarHostState() }
 
-	val b30 = remember { value.b30.map { it.rating }.sortedDescending() }
+	val b30 = remember { score.b30.map { it.rating }.sortedDescending() }
 	val b10 = remember { b30.take(10) }
-	val r10 = remember { value.r10.map { it.rating }.sortedDescending() }
+	val r10 = remember { score.r10.map { it.rating }.sortedDescending() }
 	val b30Ptt = remember { b30.sum() / 30 }
 	val b10Ptt = remember { b10.sum() / 10 }
 	val r10Ptt = remember { r10.sum() / 10 }
@@ -61,147 +69,155 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 	var r10Loaded by remember { mutableStateOf(false) }
 	var loading by remember { mutableStateOf(false) }
 
-	BoxWithScrollbar(
-		verticalState = verticalScrollState,
-		horizontalState = horizontalScrollState
+	Scaffold(
+		snackbarHost = { SnackbarHost(snackBarState) }
 	) {
-		Column {
-			TopBar(
-				layer = layer,
-				onBack = onBack,
-				onChangeLoading = { loading = it }
-			)
-			Box(
-				modifier = Modifier
-					.verticalScroll(verticalScrollState)
-					.horizontalScroll(horizontalScrollState)
-			) {
-				Surface(
-					color = MaterialTheme.colorScheme.background,
-					modifier = Modifier.drawToLayer(layer)
+		BoxWithScrollbar(
+			verticalState = verticalScrollState,
+			horizontalState = horizontalScrollState
+		) {
+			Column {
+				TopBar(
+					layer = layer,
+					snackBarState = snackBarState,
+					onBack = onBack,
+					onChangeLoading = { loading = it },
+					onChangeScore = { score = it }
+				)
+				Box(
+					modifier = Modifier
+						.verticalScroll(verticalScrollState)
+						.horizontalScroll(horizontalScrollState)
 				) {
-					Column(
-						horizontalAlignment = Alignment.CenterHorizontally,
-						verticalArrangement = Arrangement.spacedBy(32.dp),
-						modifier = Modifier
-							.padding(16.dp)
-							.width(1964.dp)
+					Surface(
+						color = MaterialTheme.colorScheme.background,
+						modifier = Modifier.drawToLayer(layer)
 					) {
-						Header(
-							user = user,
-							relPttFloor = remember { floorPtt(relPtt) },
-							b30PttFloor = remember { floorPtt(b30Ptt) },
-							r10PttFloor = remember { floorPtt(r10Ptt) },
-							b10PttFloor = remember { floorPtt(b10Ptt) },
-							maxPttFloor = remember { floorPtt(maxPtt) },
-							minPttFloor = remember { floorPtt(minPtt) },
-							onDialog = { currentDialog = userDialog },
-							onLoaded = { headerLoaded = true }
-						)
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.spacedBy(8.dp)
+							verticalArrangement = Arrangement.spacedBy(32.dp),
+							modifier = Modifier
+								.padding(16.dp)
+								.width(1964.dp)
 						) {
-							Text(
-								text = "Best 30",
-								style = MaterialTheme.typography.headlineLarge
+							Header(
+								user = user,
+								relPttFloor = remember { floorPtt(relPtt) },
+								b30PttFloor = remember { floorPtt(b30Ptt) },
+								r10PttFloor = remember { floorPtt(r10Ptt) },
+								b10PttFloor = remember { floorPtt(b10Ptt) },
+								maxPttFloor = remember { floorPtt(maxPtt) },
+								minPttFloor = remember { floorPtt(minPtt) },
+								onDialog = { currentDialog = userDialog },
+								onLoaded = { headerLoaded = true }
 							)
-							TrackList(
-								list = value.b30,
-								onDialog = { currentDialog = it },
-								onLoaded = { b30Loaded = true }
-							)
-						}
-						Column(
-							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.spacedBy(8.dp)
-						) {
-							Text(
-								text = "Recent 10",
-								style = MaterialTheme.typography.headlineLarge
-							)
-							TrackList(
-								list = value.r10,
-								onDialog = { currentDialog = it },
-								onLoaded = { r10Loaded = true }
-							)
+							Column(
+								horizontalAlignment = Alignment.CenterHorizontally,
+								verticalArrangement = Arrangement.spacedBy(8.dp)
+							) {
+								Text(
+									text = "Best 30",
+									style = MaterialTheme.typography.headlineLarge
+								)
+								TrackList(
+									list = score.b30,
+									onDialog = { currentDialog = it },
+									onLoaded = { b30Loaded = true }
+								)
+							}
+							Column(
+								horizontalAlignment = Alignment.CenterHorizontally,
+								verticalArrangement = Arrangement.spacedBy(8.dp)
+							) {
+								Text(
+									text = "Recent 10",
+									style = MaterialTheme.typography.headlineLarge
+								)
+								TrackList(
+									list = score.r10,
+									onDialog = { currentDialog = it },
+									onLoaded = { r10Loaded = true }
+								)
+							}
 						}
 					}
 				}
 			}
-		}
-		currentDialog?.let {
-			Dialog(
-				onDismissRequest = { currentDialog = null }
-			) {
-				Card(
-					shape = RoundedCornerShape(16.dp)
+			currentDialog?.let {
+				Dialog(
+					onDismissRequest = { currentDialog = null }
 				) {
-					Column(
-						verticalArrangement = Arrangement.spacedBy(8.dp),
-						modifier = Modifier.padding(16.dp)
+					Card(
+						shape = RoundedCornerShape(16.dp)
 					) {
-						when (it) {
-							is PTTDialog.User -> {
-								Text(
-									text = "PTT: ${it.rel}"
-								)
-								Text(
-									text = "B30: ${it.b30}"
-								)
-								Text(
-									text = "R10: ${it.r10}"
-								)
-								Text(
-									text = "B10: ${it.b10}"
-								)
-								Text(
-									text = "Max: ${it.max}"
-								)
-								Text(
-									text = "Min: ${it.min}"
-								)
-							}
+						SelectionContainer {
+							Column(
+								verticalArrangement = Arrangement.spacedBy(8.dp),
+								modifier = Modifier.padding(16.dp)
+							) {
+								when (it) {
+									is PTTDialog.User -> {
+										Text(
+											text = "PTT: ${it.rel}"
+										)
+										Text(
+											text = "B30: ${it.b30}"
+										)
+										Text(
+											text = "R10: ${it.r10}"
+										)
+										Text(
+											text = "B10: ${it.b10}"
+										)
+										Text(
+											text = "Max: ${it.max}"
+										)
+										Text(
+											text = "Min: ${it.min}"
+										)
+									}
 
-							is PTTDialog.Track -> {
-								Text(
-									text = "Title: ${it.title}"
-								)
-								Text(
-									text = "Difficult: ${it.difficult}"
-								)
-								Text(
-									text = "ChartConstant: ${it.chartConstant}"
-								)
-								AsyncImage(
-									uri = it.image,
-									contentDescription = null
-								)
-								Text(
-									text = "PTT: ${it.ptt}"
-								)
-								Text(
-									text = "Time: ${
-										Instant.fromEpochMilliseconds(it.timestamp)
-											.toLocalDateTime(TimeZone.currentSystemDefault())
-									}"
-								)
+									is PTTDialog.Track -> {
+										Text(
+											text = "Title: ${it.title}"
+										)
+										Text(
+											text = "Difficult: ${it.difficult}"
+										)
+										Text(
+											text = "ChartConstant: ${it.chartConstant}"
+										)
+										AsyncImage(
+											uri = it.image,
+											contentDescription = null
+										)
+										Text(
+											text = "PTT: ${it.ptt}"
+										)
+										Text(
+											text = "Time: ${
+												Instant.fromEpochMilliseconds(it.timestamp)
+													.toLocalDateTime(TimeZone.currentSystemDefault())
+											}"
+										)
+									}
+								}
 							}
 						}
 					}
 				}
 			}
-		}
-		if (!(headerLoaded && b30Loaded && r10Loaded) || loading) {
-			Dialog(
-				onDismissRequest = {}
-			) {
-				Card(
-					shape = RoundedCornerShape(16.dp)
+			if (!(headerLoaded && b30Loaded && r10Loaded) || loading) {
+				Dialog(
+					onDismissRequest = {}
 				) {
-					CircularProgressIndicator(
-						modifier = Modifier.padding(16.dp)
-					)
+					Card(
+						shape = RoundedCornerShape(16.dp)
+					) {
+						CircularProgressIndicator(
+							modifier = Modifier.padding(16.dp)
+						)
+					}
 				}
 			}
 		}
@@ -209,7 +225,13 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 }
 
 @Composable
-fun TopBar(layer: GraphicsLayer, onBack: () -> Unit, onChangeLoading: (Boolean) -> Unit) {
+fun TopBar(
+	layer: GraphicsLayer,
+	snackBarState: SnackbarHostState,
+	onBack: () -> Unit,
+	onChangeLoading: (Boolean) -> Unit,
+	onChangeScore: (Score.Value) -> Unit
+) {
 	val scope = rememberCoroutineScope()
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
@@ -267,6 +289,40 @@ fun TopBar(layer: GraphicsLayer, onBack: () -> Unit, onChangeLoading: (Boolean) 
 				text = "保存图片"
 			)
 		}
+		Button(
+			onClick = {
+				scope.launch {
+					try {
+						onChangeLoading(true)
+						val sid = sid!!
+						val userDeferred = async(Dispatchers.IO) {
+							loadUser(sid).body<User>().value
+						}
+						val responseDeferred = async(Dispatchers.IO) {
+							client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
+								cookie("sid", sid)
+							}
+						}
+						user = userDeferred.await()
+						val response = responseDeferred.await()
+						val score = response.body<Score>()
+						if (score.success) {
+							onChangeScore(score.value!!)
+						} else {
+							snackBarState.showSnackbar("生成失败: ${response.bodyAsText()}")
+						}
+					} catch (e: Exception) {
+						snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
+					} finally {
+						onChangeLoading(false)
+					}
+				}
+			}
+		) {
+			Text(
+				text = "刷新数据"
+			)
+		}
 	}
 }
 
@@ -308,6 +364,7 @@ fun Header(
 							.size(564.dp, 74.dp)
 							.padding(start = 90.dp)
 					)
+
 					else -> AsyncImage(
 						uri = "https://webassets.lowiro.com/${banner.resource}.png",
 						contentDescription = null,
