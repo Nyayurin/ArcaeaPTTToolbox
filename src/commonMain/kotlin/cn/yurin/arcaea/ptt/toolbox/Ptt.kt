@@ -132,7 +132,7 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 									}
 								}
 								.padding(16.dp)
-								.width(1464.dp)
+								.width(1514.dp)
 						) {
 							Header(
 								user = user,
@@ -594,7 +594,7 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 			}
 		),
 		shape = RoundedCornerShape(16.dp),
-		modifier = Modifier.width(280.dp)
+		modifier = Modifier.width(290.dp)
 	) {
 		Column(
 			verticalArrangement = Arrangement.spacedBy(4.dp),
