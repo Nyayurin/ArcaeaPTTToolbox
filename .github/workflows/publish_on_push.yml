@@ -2,7 +2,7 @@ name: Package
 on:
   push:
     branches: [ master ]
-    path-ignore:
+    paths-ignore:
       - 'README.md'
 jobs:
   package-android:
