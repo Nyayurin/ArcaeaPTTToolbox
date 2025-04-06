@@ -87,7 +87,6 @@ fun Login(onBack: () -> Unit) {
 									snackBarState.showSnackbar("账号和密码不能为空")
 									return@launch
 								}
-								state = State.Loading
 								connecting = true
 								val response = withContext(Dispatchers.IO) {
 									client.post("https://webapi.lowiro.com/auth/login") {
@@ -100,7 +99,7 @@ fun Login(onBack: () -> Unit) {
 										setBody(LoginRequest(email, password))
 									}
 								}
-								val login = response.body<Login>()
+								val login = response.body<LoginResponse>()
 								if (login.isLoggedIn != true) {
 									snackBarState.showSnackbar("登陆失败: ${response.bodyAsText()}")
 									return@launch
@@ -111,14 +110,6 @@ fun Login(onBack: () -> Unit) {
 										.replace("%2F", "/")
 								save(sid)
 								onBack()
-								launch(Dispatchers.IO) {
-									val userResponse = loadUser(sid!!)
-									val tempUser = userResponse.body<User>()
-									if (tempUser.success) {
-										user = tempUser.value!!
-										state = State.Online
-									}
-								}
 							} catch (e: Exception) {
 								snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
 							} finally {

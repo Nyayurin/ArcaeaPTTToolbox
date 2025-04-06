@@ -23,18 +23,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.github.panpf.sketch.AsyncImage
 import com.github.panpf.sketch.LocalPlatformContext
-import com.github.panpf.sketch.rememberAsyncImageState
 import com.github.panpf.sketch.request.ImageRequest
-import com.github.panpf.sketch.request.LoadState
 import com.github.panpf.sketch.util.Size
 import io.github.vinceglb.filekit.core.FileKit
-import io.ktor.client.call.*
-import io.ktor.client.request.*
-import io.ktor.client.statement.*
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
-import kotlin.math.round
 
 val dateTimeFormat = LocalDateTime.Format {
 	year()
@@ -51,38 +48,15 @@ val dateTimeFormat = LocalDateTime.Format {
 }
 
 @Composable
-fun PTT(value: Score.Value, onBack: () -> Unit) {
-	var score by remember { mutableStateOf(value) }
+fun PTT(user: User, onBack: () -> Unit) {
 	var instant by remember { mutableStateOf(Clock.System.now()) }
-	val user = remember { user!! }
 
 	val layer = rememberGraphicsLayer()
 	val verticalScrollState = rememberScrollState()
 	val horizontalScrollState = rememberScrollState()
 	val snackBarState = remember { SnackbarHostState() }
 
-	val b30 = remember { score.b30.map { it.rating }.sortedDescending() }
-	val b10 = remember { b30.take(10) }
-	val r10 = remember { score.r10.map { it.rating }.sortedDescending() }
-	val b30Ptt = remember { b30.sum() / 30 }
-	val b10Ptt = remember { b10.sum() / 10 }
-	val r10Ptt = remember { r10.sum() / 10 }
-	val relPtt = remember { (b30.sum() + r10.sum()) / 40 }
-	val maxPtt = remember { (b30.sum() + b10.sum()) / 40 }
-	val minPtt = remember { b30.sum() / 40 }
-	val userDialog = remember {
-		PTTDialog.User(
-			b30 = b30Ptt,
-			r10 = r10Ptt,
-			b10 = b10Ptt,
-			rel = relPtt,
-			max = maxPtt,
-			min = minPtt
-		)
-	}
 	var currentDialog by remember { mutableStateOf<PTTDialog?>(null) }
-	val imageCount = remember { 2 + (user.customBanner?.let { 1 } ?: 0) + (score.b30.size + score.r10.size) }
-	var imageLoaded by remember { mutableStateOf(0) }
 	var loading by remember { mutableStateOf(false) }
 
 	LaunchedEffect(Unit) {
@@ -102,11 +76,9 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 			Column {
 				TopBar(
 					layer = layer,
-					snackBarState = snackBarState,
 					instant = instant,
 					onBack = onBack,
-					onChangeLoading = { loading = it },
-					onChangeScore = { score = it }
+					onChangeLoading = { loading = it }
 				)
 				Box(
 					modifier = Modifier
@@ -136,14 +108,13 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 						) {
 							Header(
 								user = user,
-								relPttFloor = remember { floorPtt(relPtt) },
-								b30PttFloor = remember { floorPtt(b30Ptt) },
-								r10PttFloor = remember { floorPtt(r10Ptt) },
-								b10PttFloor = remember { floorPtt(b10Ptt) },
-								maxPttFloor = remember { floorPtt(maxPtt) },
-								minPttFloor = remember { floorPtt(minPtt) },
-								onDialog = { currentDialog = userDialog },
-								onLoaded = { imageLoaded++ }
+								relPttFloor = remember { floorPtt(user.ptt.real) },
+								b30PttFloor = remember { floorPtt(user.ptt.b30) },
+								r10PttFloor = remember { floorPtt(user.ptt.r10) },
+								b10PttFloor = remember { floorPtt(user.ptt.b10) },
+								maxPttFloor = remember { floorPtt(user.ptt.max) },
+								minPttFloor = remember { floorPtt(user.ptt.min) },
+								onDialog = { currentDialog = PTTDialog.User }
 							)
 							Column(
 								horizontalAlignment = Alignment.CenterHorizontally,
@@ -155,9 +126,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 									style = MaterialTheme.typography.headlineLarge
 								)
 								TrackList(
-									list = score.b30,
-									onDialog = { currentDialog = it },
-									onLoaded = { imageLoaded++ }
+									list = user.best,
+									onDialog = { currentDialog = it }
 								)
 							}
 							Column(
@@ -170,9 +140,8 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 									style = MaterialTheme.typography.headlineLarge
 								)
 								TrackList(
-									list = score.r10,
-									onDialog = { currentDialog = it },
-									onLoaded = { imageLoaded++ }
+									list = user.recent,
+									onDialog = { currentDialog = it }
 								)
 							}
 							Text(
@@ -205,46 +174,84 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 								when (it) {
 									is PTTDialog.User -> {
 										Text(
-											text = "PTT: ${it.rel}"
+											text = "PTT: ${user.ptt.real}"
 										)
 										Text(
-											text = "B30: ${it.b30}"
+											text = "B30: ${user.ptt.b30}"
 										)
 										Text(
-											text = "R10: ${it.r10}"
+											text = "R10: ${user.ptt.r10}"
 										)
 										Text(
-											text = "B10: ${it.b10}"
+											text = "B10: ${user.ptt.b10}"
 										)
 										Text(
-											text = "Max: ${it.max}"
+											text = "Max: ${user.ptt.max}"
 										)
 										Text(
-											text = "Min: ${it.min}"
+											text = "Min: ${user.ptt.min}"
 										)
 									}
 
 									is PTTDialog.Track -> {
 										Text(
-											text = "Title: ${it.title}"
+											text = "Title: ${it.track.title}"
 										)
 										Text(
-											text = "Difficult: ${it.difficult}"
+											text = "Difficult: ${it.track.difficulty}"
 										)
 										Text(
-											text = "ChartConstant: ${it.chartConstant}"
+											text = "Chart constant: ${it.track.chartConstant}"
 										)
 										AsyncImage(
-											uri = it.image,
+											uri = it.track.img.absolutePath(),
 											contentDescription = null
 										)
 										Text(
-											text = "PTT: ${it.ptt}"
+											text = "Score: ${it.track.score}"
 										)
 										Text(
+											text = "PTT: ${it.track.ptt}"
+										)
+										Text(
+											text = buildString {
+												append("Pure: ${it.track.pure}")
+												append("(+${it.track.pure - it.track.lowerPure}")
+												append(", ")
+												append("-${it.track.lowerPure})")
+											}
+										)
+										Text(
+											text = "Far: ${it.track.far}"
+										)
+										Text(
+											text = "Lost: ${it.track.lost}"
+										)
+										Text(
+											text = "Notes: ${it.track.notes}"
+										)
+										it.track.rating?.let {
+											Text(
+												text = buildString {
+													append("Rating score: ")
+													append(it.max - it.lost)
+													append(" / ")
+													append(it.max)
+												}
+											)
+											Text(
+												text = "Rating lost score: ${it.lost}"
+											)
+											Text(
+												text = "Rating score part: ${it.score}"
+											)
+											Text(
+												text = "Rating acc part: ${it.acc}"
+											)
+										}
+										Text(
 											text = "Play at: ${
-												Instant.fromEpochMilliseconds(it.timestamp)
-													.toLocalDateTime(TimeZone.currentSystemDefault())
+												it.track.instant.toLocalDateTime(TimeZone.currentSystemDefault())
 													.format(dateTimeFormat)
 											}"
 										)
@@ -255,26 +262,16 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 					}
 				}
 			}
-			if (imageLoaded != imageCount || loading) {
+			if (loading) {
 				Dialog(
 					onDismissRequest = {}
 				) {
 					Card(
 						shape = RoundedCornerShape(16.dp)
 					) {
-						Column(
-							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.spacedBy(16.dp)
-						) {
-							if (imageLoaded != imageCount) {
-								Text(
-									text = "加载图片中($imageLoaded/$imageCount)"
-								)
-							}
-							CircularProgressIndicator(
-								modifier = Modifier.padding(16.dp)
-							)
-						}
+						CircularProgressIndicator(
+							modifier = Modifier.padding(16.dp)
+						)
 					}
 				}
 			}
@@ -285,11 +282,9 @@ fun PTT(value: Score.Value, onBack: () -> Unit) {
 @Composable
 fun TopBar(
 	layer: GraphicsLayer,
-	snackBarState: SnackbarHostState,
 	instant: Instant,
 	onBack: () -> Unit,
-	onChangeLoading: (Boolean) -> Unit,
-	onChangeScore: (Score.Value) -> Unit
+	onChangeLoading: (Boolean) -> Unit
 ) {
 	val scope = rememberCoroutineScope()
 	Row(
@@ -348,57 +343,20 @@ fun TopBar(
 				text = "保存图片"
 			)
 		}
-		Button(
-			onClick = {
-				scope.launch {
-					try {
-						onChangeLoading(true)
-						val sid = sid!!
-						val userDeferred = async(Dispatchers.IO) {
-							loadUser(sid).body<User>().value
-						}
-						val responseDeferred = async(Dispatchers.IO) {
-							client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
-								cookie("sid", sid)
-							}
-						}
-						user = userDeferred.await()
-						val response = responseDeferred.await()
-						val score = response.body<Score>()
-						if (score.success) {
-							onChangeScore(score.value!!)
-						} else {
-							snackBarState.showSnackbar("生成失败: ${response.bodyAsText()}")
-						}
-					} catch (e: Exception) {
-						snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
-					} finally {
-						onChangeLoading(false)
-					}
-				}
-			}
-		) {
-			Text(
-				text = "刷新数据"
-			)
-		}
 	}
 }
 
 @Composable
 fun Header(
-	user: User.Value,
+	user: User,
 	relPttFloor: String,
 	b30PttFloor: String,
 	r10PttFloor: String,
 	b10PttFloor: String,
 	maxPttFloor: String,
 	minPttFloor: String,
-	onDialog: () -> Unit,
-	onLoaded: () -> Unit
+	onDialog: () -> Unit
 ) {
-	val character = remember { user.characterStats.find { it.characterId == user.character }!! }
-	val banner = remember { user.banners.find { it.id == user.customBanner } }
 	Row(
 		verticalAlignment = Alignment.CenterVertically,
 		horizontalArrangement = Arrangement.SpaceBetween,
@@ -409,7 +367,7 @@ fun Header(
 				contentAlignment = Alignment.CenterStart,
 				modifier = Modifier.height(180.dp)
 			) {
-				when (banner) {
+				when (user.banner) {
 					null -> Spacer(
 						modifier = Modifier
 							.size(564.dp, 74.dp)
@@ -420,18 +378,11 @@ fun Header(
 						request = ImageRequest
 							.Builder(
 								context = LocalPlatformContext.current,
-								uri = "https://webassets.lowiro.com/${banner.resource}.png"
+								uri = user.banner.path.absolutePath()
 							)
 							.size(Size.Origin)
 							.build(),
 						contentDescription = null,
-						state = rememberAsyncImageState().apply {
-							onLoadState = {
-								if (it is LoadState.Success) {
-									onLoaded()
-								}
-							}
-						},
 						modifier = Modifier
 							.size(564.dp, 74.dp)
 							.padding(start = 90.dp)
@@ -445,18 +396,11 @@ fun Header(
 						request = ImageRequest
 							.Builder(
 								context = LocalPlatformContext.current,
-								uri = "https://webassets.lowiro.com/chr/${character.icon}.png"
+								uri = user.character.path.absolutePath()
 							)
 							.size(Size.Origin)
 							.build(),
 						contentDescription = null,
-						state = rememberAsyncImageState().apply {
-							onLoadState = {
-								if (it is LoadState.Success) {
-									onLoaded()
-								}
-							}
-						},
 						modifier = Modifier
 							.size(170.dp)
 							.clickable(onClick = onDialog)
@@ -470,18 +414,11 @@ fun Header(
 							request = ImageRequest
 								.Builder(
 									context = LocalPlatformContext.current,
-									uri = pttIcon(relPttFloor.toDouble(), user.settings.isHideRating)
+									uri = user.ptt.path.absolutePath()
 								)
 								.size(Size.Origin)
 								.build(),
 							contentDescription = null,
-							state = rememberAsyncImageState().apply {
-								onLoadState = {
-									if (it is LoadState.Success) {
-										onLoaded()
-									}
-								}
-							},
 							modifier = Modifier.size(120.dp)
 						)
 						Text(
@@ -493,15 +430,15 @@ fun Header(
 				}
 			}
 			Text(
-				text = user.displayName,
-				color = colorOnBanner(banner?.id),
+				text = user.name,
+				color = colorOnBanner(user.banner?.id),
 				style = MaterialTheme.typography.headlineLarge,
 				modifier = Modifier
 					.align(Alignment.CenterStart)
 					.padding(start = 200.dp)
 			)
 			Text(
-				text = "ID: ${user.userCode}",
+				text = "ID: ${user.id}",
 				style = MaterialTheme.typography.titleLarge,
 				modifier = Modifier
 					.align(Alignment.BottomCenter)
@@ -540,7 +477,7 @@ fun PTTRow(left: String, right: String) {
 }
 
 @Composable
-fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: () -> Unit) {
+fun TrackList(list: List<User.Track>, onDialog: (PTTDialog.Track) -> Unit) {
 	Column(
 		verticalArrangement = Arrangement.spacedBy(16.dp)
 	) {
@@ -553,8 +490,7 @@ fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: 
 					TrackCard(
 						index = index,
 						track = list[y * 5 + x],
-						onDialog = onDialog,
-						onLoaded = onLoaded
+						onDialog = onDialog
 					)
 				}
 			}
@@ -563,29 +499,9 @@ fun TrackList(list: List<Track>, onDialog: (PTTDialog.Track) -> Unit, onLoaded: 
 }
 
 @Composable
-fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onLoaded: () -> Unit) {
-	val chartConstant = remember {
-		round(
-			when {
-				track.isPM() -> track.rating - 2
-				track.isEX() -> track.rating - 1 - (track.score - 9800000) / 200000.0
-				else -> track.rating - (track.score - 9500000) / 300000.0
-			} * 10
-		) / 10
-	}
+fun TrackCard(index: Int, track: User.Track, onDialog: (PTTDialog.Track) -> Unit) {
 	Card(
-		onClick = {
-			onDialog(
-				PTTDialog.Track(
-					title = track.title.en,
-					image = "https://webassets.lowiro.com/${track.bg}.jpg",
-					chartConstant = chartConstant,
-					difficult = Difficult.entries[track.difficulty],
-					ptt = track.rating,
-					timestamp = track.time
-				)
-			)
-		},
+		onClick = { onDialog(PTTDialog.Track(track)) },
 		colors = CardDefaults.cardColors(
 			containerColor = when {
 				track.isPM() -> MaterialTheme.colorScheme.primaryContainer
@@ -610,19 +526,13 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 						.padding(end = 8.dp)
 				) {
 					Text(
-						text = "[${Difficult.entries[track.difficulty]}$chartConstant]",
+						text = "[${track.difficulty}${track.chartConstant}]",
 						maxLines = 1,
 						style = MaterialTheme.typography.titleSmall,
-						color = when (Difficult.entries[track.difficulty]) {
-							Difficult.PST -> Color(0xFF328AA0)
-							Difficult.PRS -> Color(0xFF8C9B51)
-							Difficult.FTR -> Color(0xFF772F63)
-							Difficult.BYD -> Color(0xFFA0303F)
-							Difficult.ETR -> Color(0xFF675781)
-						}
+						color = track.difficulty.color
 					)
 					Text(
-						text = track.title.en,
+						text = track.title,
 						maxLines = 1,
 						style = MaterialTheme.typography.titleSmall,
 						overflow = TextOverflow.Ellipsis
@@ -645,17 +555,10 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 				) {
 					AsyncImage(
 						request = ImageRequest
-							.Builder(LocalPlatformContext.current, "https://webassets.lowiro.com/${track.bg}.jpg")
+							.Builder(LocalPlatformContext.current, track.img.absolutePath())
 							.size(Size.Origin)
 							.build(),
 						contentDescription = null,
-						state = rememberAsyncImageState().apply {
-							onLoadState = {
-								if (it is LoadState.Success) {
-									onLoaded()
-								}
-							}
-						},
 						modifier = Modifier.fillMaxSize()
 					)
 					Text(
@@ -675,23 +578,16 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 					modifier = Modifier.fillMaxSize()
 				) {
 					Column(
-						verticalArrangement = Arrangement.spacedBy(16.dp)
+						verticalArrangement = Arrangement.spacedBy(8.dp)
 					) {
 						Text(
-							text = roundPtt(track.rating),
+							text = roundPtt(track.ptt),
 							maxLines = 1,
 							style = MaterialTheme.typography.headlineSmall
 						)
 						Column {
 							Text(
-								text = "P: ${track.pure}(-${
-									lowerPure(
-										track.score,
-										track.pure,
-										track.far,
-										track.lost
-									)
-								})",
+								text = "P: ${track.pure}(-${track.lowerPure})",
 								maxLines = 1,
 								style = MaterialTheme.typography.bodySmall.copy(
 									brush = Brush.verticalGradient(listOf(Color(0xFF9B1691), Color(0xFF4176B9)))
@@ -713,7 +609,12 @@ fun TrackCard(index: Int, track: Track, onDialog: (PTTDialog.Track) -> Unit, onL
 							)
 						}
 						Text(
-							text = calculatorTime(track.time),
+							text = "LS: ${floorPtt(track.rating?.lost ?: 0.0)}",
+							maxLines = 1,
+							style = MaterialTheme.typography.bodySmall,
+						)
+						Text(
+							text = calculatorTime(track.instant),
 							maxLines = 1,
 							style = MaterialTheme.typography.bodySmall
 						)

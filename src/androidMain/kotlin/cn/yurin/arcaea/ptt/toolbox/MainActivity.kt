@@ -11,6 +11,7 @@ class MainActivity : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 		FileKit.init(this)
 		enableEdgeToEdge()
+		ContextContainer.context = this
 		setContent {
 			App()
 		}

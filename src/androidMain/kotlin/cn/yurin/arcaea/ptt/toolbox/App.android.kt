@@ -1,5 +1,6 @@
 package cn.yurin.arcaea.ptt.toolbox
 
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.Composable
@@ -22,4 +23,8 @@ actual suspend fun ImageBitmap.toByteArray(): ByteArray {
 		stream.flush()
 		return stream.toByteArray()
 	}
+}
+
+object ContextContainer {
+	lateinit var context: Context
 }

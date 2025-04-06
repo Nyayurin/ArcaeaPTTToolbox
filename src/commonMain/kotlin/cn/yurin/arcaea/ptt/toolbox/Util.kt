@@ -8,8 +8,12 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.unit.IntSize
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import okio.FileSystem
+import okio.Path
 import kotlin.math.floor
 import kotlin.math.round
 
@@ -66,8 +70,7 @@ fun makeScoreString(score: Int) = buildString {
 	}
 }.reversed()
 
-fun calculatorTime(time: Long): String {
-	val instant = Instant.fromEpochMilliseconds(time)
+fun calculatorTime(instant: Instant): String {
 	val now = Clock.System.now()
 	val duration = now - instant
 	return when {
@@ -94,10 +97,6 @@ fun pttIcon(ptt: Double, hide: Boolean) = when {
 	ptt < 13.0 -> "https://arcwiki.mcd.blue/images/e/ee/Rating_6.png"
 	else -> "https://arcwiki.mcd.blue/images/2/22/Rating_7.png"
 }
-
-fun Track.isPM() = far + lost == 0 && score >= 10000000
-fun Track.isFR() = lost == 0
-fun Track.isEX() = score >= 9800000
 
 fun colorOnBanner(id: String?): Color = when (id) {
 	null -> Color.Unspecified
@@ -126,3 +125,32 @@ fun colorOnBanner(id: String?): Color = when (id) {
 	"online_banner_2025_04" -> Color(120, 71, 82)
 	else -> null
 } ?: Color.White
+
+expect fun privatePath(parent: String, child: String): Path
+
+suspend fun loadImage(url: String, path: Path): Path {
+	val fileSystem = FileSystem.SYSTEM
+	if (!fileSystem.exists(path)) {
+		val bytes = client.get(url).bodyAsBytes()
+		fileSystem.write(path) {
+			write(bytes)
+		}
+	}
+	return path
+}
+
+fun Path.absolutePath(): String {
+	if (isAbsolute) {
+		return toString().replace('\\', '/')
+	}
+
+	val absolute = FileSystem.SYSTEM.canonicalize(this)
+	return absolute.toString().replace('\\', '/')
+}
+
+fun notes(
+	score: Int,
+	pure: Int,
+	far: Int,
+	lowerPure: Int
+) = (((pure + far * 0.5) / (score - (pure - lowerPure))) * 10000000).toInt()

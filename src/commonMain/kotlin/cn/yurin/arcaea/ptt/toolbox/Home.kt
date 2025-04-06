@@ -32,7 +32,6 @@ fun Home(onChangePage: (Page) -> Unit) {
 			) {
 				Row(
 					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.SpaceBetween,
 					modifier = Modifier
 						.fillMaxWidth()
 						.background(MaterialTheme.colorScheme.surfaceContainer)
@@ -50,37 +49,31 @@ fun Home(onChangePage: (Page) -> Unit) {
 							text = sid?.let { "切换账号" } ?: "登录"
 						)
 					}
-					AnimatedVisibility(sid != null) {
-						Text(
-							text = user?.displayName ?: state.name
-						)
-					}
 				}
-				AnimatedVisibility(user != null) {
+				AnimatedVisibility(sid != null) {
 					Button(
 						onClick = {
 							scope.launch {
 								try {
 									loading = true
-									val sid = sid!!
 									val userDeferred = async(Dispatchers.IO) {
-										loadUser(sid).body<User>().value
+										loadUser(sid!!).body<UserResponse>().value!!
 									}
-									val responseDeferred = async(Dispatchers.IO) {
+									val scoreResponseDeferred = async(Dispatchers.IO) {
 										client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
-											cookie("sid", sid)
+											cookie("sid", sid!!)
 										}
 									}
-									user = userDeferred.await()
-									val response = responseDeferred.await()
-									val score = response.body<Score>()
+									val user = userDeferred.await()
+									val scoreResponse = scoreResponseDeferred.await()
+									val score = scoreResponse.body<ScoreResponse>()
 									if (score.success) {
-										onChangePage(Page.PTT(score.value!!))
+										onChangePage(Page.PTT(User.from(user, score.value!!)))
 									} else {
-										snackBarState.showSnackbar("生成失败: ${response.bodyAsText()}")
+										snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
 									}
 								} catch (e: Exception) {
-									snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
+									snackBarState.showSnackbar("异常: $e")
 								} finally {
 									loading = false
 								}
