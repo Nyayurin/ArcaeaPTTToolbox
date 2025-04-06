@@ -1,3 +1,3 @@
 通过 Arcaea Online API 获取数据并生成 b30 & R10 图片
 
-样例: ![411226a9716209f2c4210a454da15179](https://github.com/user-attachments/assets/85eb30d1-eb62-4558-ab57-590eabdf27d8)
+样例: ![PTT_2025_04_06-18_09_50](https://github.com/user-attachments/assets/eb00f713-c70b-40ea-a166-fff258bb815e)
