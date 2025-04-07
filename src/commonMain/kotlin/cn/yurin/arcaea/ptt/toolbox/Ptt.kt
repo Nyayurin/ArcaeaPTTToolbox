@@ -26,7 +26,12 @@ import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.util.Size
 import io.github.vinceglb.filekit.core.FileKit
+import io.ktor.client.call.body
+import io.ktor.client.request.cookie
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,6 +54,7 @@ val dateTimeFormat = LocalDateTime.Format {
 
 @Composable
 fun PTT(user: User, onBack: () -> Unit) {
+	var user by remember { mutableStateOf(user) }
 	var instant by remember { mutableStateOf(Clock.System.now()) }
 
 	val layer = rememberGraphicsLayer()
@@ -76,9 +82,11 @@ fun PTT(user: User, onBack: () -> Unit) {
 			Column {
 				TopBar(
 					layer = layer,
+					snackBarState = snackBarState,
 					instant = instant,
 					onBack = onBack,
-					onChangeLoading = { loading = it }
+					onChangeLoading = { loading = it },
+					onChangeUser = { user = it }
 				)
 				Box(
 					modifier = Modifier
@@ -282,8 +290,10 @@ fun PTT(user: User, onBack: () -> Unit) {
 @Composable
 fun TopBar(
 	layer: GraphicsLayer,
+	snackBarState: SnackbarHostState,
 	instant: Instant,
 	onBack: () -> Unit,
+	onChangeUser: (User) -> Unit,
 	onChangeLoading: (Boolean) -> Unit
 ) {
 	val scope = rememberCoroutineScope()
@@ -341,6 +351,39 @@ fun TopBar(
 		) {
 			Text(
 				text = "保存图片"
+			)
+		}
+		Button(
+			onClick = {
+				scope.launch {
+					try {
+						onChangeLoading(true)
+						val userDeferred = async(Dispatchers.IO) {
+							loadUser(sid!!).body<UserResponse>().value!!
+						}
+						val scoreResponseDeferred = async(Dispatchers.IO) {
+							client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
+								cookie("sid", sid!!)
+							}
+						}
+						val user = userDeferred.await()
+						val scoreResponse = scoreResponseDeferred.await()
+						val score = scoreResponse.body<ScoreResponse>()
+						if (score.success) {
+							onChangeUser(User.from(user, score.value!!))
+						} else {
+							snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
+						}
+					} catch (e: Exception) {
+						snackBarState.showSnackbar("异常: $e")
+					} finally {
+						onChangeLoading(false)
+					}
+				}
+			}
+		) {
+			Text(
+				text = "刷新数据"
 			)
 		}
 	}
