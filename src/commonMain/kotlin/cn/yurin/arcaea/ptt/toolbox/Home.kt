@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 fun Home(onChangePage: (Page) -> Unit) {
 	val scope = rememberCoroutineScope()
 	val snackBarState = remember { SnackbarHostState() }
+	var onDisLoading by remember { mutableStateOf<(() -> Unit)?>(null) }
 	var loading by remember { mutableStateOf(false) }
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
@@ -56,26 +57,35 @@ fun Home(onChangePage: (Page) -> Unit) {
 							scope.launch {
 								try {
 									loading = true
-									val userDeferred = async(Dispatchers.IO) {
-										loadUser(sid!!).body<UserResponse>().value!!
-									}
-									val scoreResponseDeferred = async(Dispatchers.IO) {
-										client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
-											cookie("sid", sid!!)
+									val deferred = async {
+										val userDeferred = async(Dispatchers.IO) {
+											loadUser(sid!!).body<UserResponse>().value!!
+										}
+										val scoreResponseDeferred = async(Dispatchers.IO) {
+											client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
+												cookie("sid", sid!!)
+											}
+										}
+										val user = userDeferred.await()
+										val scoreResponse = scoreResponseDeferred.await()
+										val score = scoreResponse.body<ScoreResponse>()
+										if (score.success) {
+											onChangePage(Page.PTT(User.from(user, score.value!!)))
+										} else {
+											snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
 										}
 									}
-									val user = userDeferred.await()
-									val scoreResponse = scoreResponseDeferred.await()
-									val score = scoreResponse.body<ScoreResponse>()
-									if (score.success) {
-										onChangePage(Page.PTT(User.from(user, score.value!!)))
-									} else {
-										snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
+									onDisLoading = {
+										deferred.cancel()
+										loading = false
+										onDisLoading = null
 									}
+									deferred.await()
 								} catch (e: Exception) {
 									snackBarState.showSnackbar("异常: $e")
 								} finally {
 									loading = false
+									onDisLoading = null
 								}
 							}
 						},
@@ -89,8 +99,9 @@ fun Home(onChangePage: (Page) -> Unit) {
 				}
 			}
 			if (loading) {
+				BackHandler(onDisLoading!!)
 				Dialog(
-					onDismissRequest = {}
+					onDismissRequest = onDisLoading!!
 				) {
 					Card(
 						shape = RoundedCornerShape(16.dp)

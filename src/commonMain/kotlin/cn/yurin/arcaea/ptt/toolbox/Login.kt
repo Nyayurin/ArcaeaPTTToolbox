@@ -16,6 +16,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.headers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -24,8 +25,10 @@ fun Login(onBack: () -> Unit) {
 	val scope = rememberCoroutineScope()
 	var email by remember { mutableStateOf("") }
 	var password by remember { mutableStateOf("") }
+	var onDisconnect by remember { mutableStateOf<(() -> Unit)?>(null) }
 	var connecting by remember { mutableStateOf(false) }
 	val snackBarState = remember { SnackbarHostState() }
+	BackHandler(onBack)
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
 	) {
@@ -88,32 +91,43 @@ fun Login(onBack: () -> Unit) {
 									return@launch
 								}
 								connecting = true
-								val response = withContext(Dispatchers.IO) {
-									client.post("https://webapi.lowiro.com/auth/login") {
-										headers {
-											append(HttpHeaders.UserAgent, "ktor client")
-											append(HttpHeaders.Accept, "*/*")
-											append(HttpHeaders.Host, "webapi.lowiro.com")
+								val deferred = async {
+									val response = withContext(Dispatchers.IO) {
+										client.post("https://webapi.lowiro.com/auth/login") {
+											headers {
+												append(HttpHeaders.UserAgent, "ktor client")
+												append(HttpHeaders.Accept, "*/*")
+												append(HttpHeaders.Host, "webapi.lowiro.com")
+											}
+											contentType(ContentType.Application.Json)
+											setBody(LoginRequest(email, password))
 										}
-										contentType(ContentType.Application.Json)
-										setBody(LoginRequest(email, password))
+									}
+									val login = response.body<LoginResponse>()
+									when (login.isLoggedIn) {
+										true -> {
+											sid = response.setCookie().find { it.name == "sid" }!!.value
+												.replace("%3A", ":")
+												.replace("%2B", "+")
+												.replace("%2F", "/")
+											save(sid)
+											onBack()
+										}
+
+										else -> snackBarState.showSnackbar("登陆失败: ${response.bodyAsText()}")
 									}
 								}
-								val login = response.body<LoginResponse>()
-								if (login.isLoggedIn != true) {
-									snackBarState.showSnackbar("登陆失败: ${response.bodyAsText()}")
-									return@launch
+								onDisconnect = {
+									deferred.cancel()
+									connecting = false
+									onDisconnect = null
 								}
-								sid = response.setCookie().find { it.name == "sid" }!!.value
-										.replace("%3A", ":")
-										.replace("%2B", "+")
-										.replace("%2F", "/")
-								save(sid)
-								onBack()
+								deferred.await()
 							} catch (e: Exception) {
-								snackBarState.showSnackbar("异常: ${e.localizedMessage}}")
+								snackBarState.showSnackbar("异常: $e")
 							} finally {
 								connecting = false
+								onDisconnect = null
 							}
 						}
 					}
@@ -124,8 +138,9 @@ fun Login(onBack: () -> Unit) {
 				}
 			}
 			if (connecting) {
+				BackHandler(onDisconnect!!)
 				Dialog(
-					onDismissRequest = {}
+					onDismissRequest = onDisconnect!!
 				) {
 					Card(
 						shape = RoundedCornerShape(16.dp)

@@ -1,5 +1,6 @@
 package cn.yurin.arcaea.ptt.toolbox
 
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -154,3 +155,6 @@ fun notes(
 	far: Int,
 	lowerPure: Int
 ) = (((pure + far * 0.5) / (score - (pure - lowerPure))) * 10000000).toInt()
+
+@Composable
+expect fun BackHandler(block: () -> Unit)

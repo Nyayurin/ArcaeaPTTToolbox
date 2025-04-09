@@ -26,15 +26,13 @@ import com.github.panpf.sketch.LocalPlatformContext
 import com.github.panpf.sketch.request.ImageRequest
 import com.github.panpf.sketch.util.Size
 import io.github.vinceglb.filekit.core.FileKit
-import io.ktor.client.call.body
-import io.ktor.client.request.cookie
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.*
 import kotlinx.datetime.format.char
 
@@ -63,6 +61,7 @@ fun PTT(user: User, onBack: () -> Unit) {
 	val snackBarState = remember { SnackbarHostState() }
 
 	var currentDialog by remember { mutableStateOf<PTTDialog?>(null) }
+	var onDisLoading by remember { mutableStateOf<(() -> Unit)?>(null) }
 	var loading by remember { mutableStateOf(false) }
 
 	LaunchedEffect(Unit) {
@@ -72,6 +71,7 @@ fun PTT(user: User, onBack: () -> Unit) {
 		}
 	}
 
+	BackHandler(onBack)
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
 	) {
@@ -85,8 +85,9 @@ fun PTT(user: User, onBack: () -> Unit) {
 					snackBarState = snackBarState,
 					instant = instant,
 					onBack = onBack,
+					onChangeUser = { user = it },
 					onChangeLoading = { loading = it },
-					onChangeUser = { user = it }
+					onChangeDisLoading = { onDisLoading = it }
 				)
 				Box(
 					modifier = Modifier
@@ -168,6 +169,7 @@ fun PTT(user: User, onBack: () -> Unit) {
 				}
 			}
 			currentDialog?.let {
+				BackHandler { currentDialog = null }
 				Dialog(
 					onDismissRequest = { currentDialog = null }
 				) {
@@ -271,8 +273,9 @@ fun PTT(user: User, onBack: () -> Unit) {
 				}
 			}
 			if (loading) {
+				BackHandler(onDisLoading!!)
 				Dialog(
-					onDismissRequest = {}
+					onDismissRequest = onDisLoading!!
 				) {
 					Card(
 						shape = RoundedCornerShape(16.dp)
@@ -294,7 +297,8 @@ fun TopBar(
 	instant: Instant,
 	onBack: () -> Unit,
 	onChangeUser: (User) -> Unit,
-	onChangeLoading: (Boolean) -> Unit
+	onChangeLoading: (Boolean) -> Unit,
+	onChangeDisLoading: ((() -> Unit)?) -> Unit
 ) {
 	val scope = rememberCoroutineScope()
 	Row(
@@ -322,7 +326,7 @@ fun TopBar(
 				scope.launch {
 					onChangeLoading(true)
 					val bitmap = layer.toImageBitmap()
-					withContext(Dispatchers.IO) {
+					val deferred = async(Dispatchers.IO) {
 						val byteArray = bitmap.toByteArray()
 						val time = instant.toLocalDateTime(TimeZone.currentSystemDefault()).format(
 							LocalDateTime.Format {
@@ -345,6 +349,12 @@ fun TopBar(
 							extension = "png"
 						)
 						onChangeLoading(false)
+						onChangeDisLoading(null)
+					}
+					onChangeDisLoading {
+						deferred.cancel()
+						onChangeLoading(false)
+						onChangeDisLoading(null)
 					}
 				}
 			}
@@ -358,26 +368,35 @@ fun TopBar(
 				scope.launch {
 					try {
 						onChangeLoading(true)
-						val userDeferred = async(Dispatchers.IO) {
-							loadUser(sid!!).body<UserResponse>().value!!
-						}
-						val scoreResponseDeferred = async(Dispatchers.IO) {
-							client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
-								cookie("sid", sid!!)
+						val deferred = async {
+							val userDeferred = async(Dispatchers.IO) {
+								loadUser(sid!!).body<UserResponse>().value!!
+							}
+							val scoreResponseDeferred = async(Dispatchers.IO) {
+								client.get("https://webapi.lowiro.com/webapi/score/rating/me") {
+									cookie("sid", sid!!)
+								}
+							}
+							val user = userDeferred.await()
+							val scoreResponse = scoreResponseDeferred.await()
+							val score = scoreResponse.body<ScoreResponse>()
+							if (score.success) {
+								onChangeUser(User.from(user, score.value!!))
+							} else {
+								snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
 							}
 						}
-						val user = userDeferred.await()
-						val scoreResponse = scoreResponseDeferred.await()
-						val score = scoreResponse.body<ScoreResponse>()
-						if (score.success) {
-							onChangeUser(User.from(user, score.value!!))
-						} else {
-							snackBarState.showSnackbar("生成失败: ${scoreResponse.bodyAsText()}")
+						onChangeDisLoading {
+							deferred.cancel()
+							onChangeLoading(false)
+							onChangeDisLoading(null)
 						}
+						deferred.await()
 					} catch (e: Exception) {
 						snackBarState.showSnackbar("异常: $e")
 					} finally {
 						onChangeLoading(false)
+						onChangeDisLoading(null)
 					}
 				}
 			}
