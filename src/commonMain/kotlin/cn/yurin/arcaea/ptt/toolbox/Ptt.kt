@@ -74,10 +74,13 @@ fun PTT(user: User, onBack: () -> Unit) {
 	BackHandler(onBack)
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
-	) {
+	) { paddingValues ->
 		BoxWithScrollbar(
 			verticalState = verticalScrollState,
-			horizontalState = horizontalScrollState
+			horizontalState = horizontalScrollState,
+			modifier = Modifier
+				.fillMaxSize()
+				.padding(paddingValues)
 		) {
 			Column {
 				TopBar(
@@ -117,12 +120,12 @@ fun PTT(user: User, onBack: () -> Unit) {
 						) {
 							Header(
 								user = user,
-								relPttFloor = remember { floorPtt(user.ptt.real) },
-								b30PttFloor = remember { floorPtt(user.ptt.b30) },
-								r10PttFloor = remember { floorPtt(user.ptt.r10) },
-								b10PttFloor = remember { floorPtt(user.ptt.b10) },
-								maxPttFloor = remember { floorPtt(user.ptt.max) },
-								minPttFloor = remember { floorPtt(user.ptt.min) },
+								relPttFloor = floorPtt(user.ptt.real),
+								b30PttFloor = floorPtt(user.ptt.b30),
+								r10PttFloor = floorPtt(user.ptt.r10),
+								b10PttFloor = floorPtt(user.ptt.b10),
+								maxPttFloor = floorPtt(user.ptt.max),
+								minPttFloor = floorPtt(user.ptt.min),
 								onDialog = { currentDialog = PTTDialog.User }
 							)
 							Column(
@@ -240,23 +243,23 @@ fun PTT(user: User, onBack: () -> Unit) {
 										Text(
 											text = "Notes: ${it.track.notes}"
 										)
-										it.track.rating?.let {
+										it.track.rating?.let { rating ->
 											Text(
 												text = buildString {
 													append("Rating score: ")
-													append(it.max - it.lost)
+													append(rating.max - rating.lost)
 													append(" / ")
-													append(it.max)
+													append(rating.max)
 												}
 											)
 											Text(
-												text = "Rating lost score: ${it.lost}"
+												text = "Rating lost score: ${rating.lost}"
 											)
 											Text(
-												text = "Rating score part: ${it.score}"
+												text = "Rating score part: ${rating.score}"
 											)
 											Text(
-												text = "Rating acc part: ${it.acc}"
+												text = "Rating acc part: ${rating.acc}"
 											)
 										}
 										Text(

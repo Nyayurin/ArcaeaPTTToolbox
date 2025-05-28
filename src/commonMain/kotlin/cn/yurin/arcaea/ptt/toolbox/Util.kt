@@ -124,6 +124,7 @@ fun colorOnBanner(id: String?): Color = when (id) {
 	"online_banner_2025_02" -> Color(36, 30, 64)
 	"online_banner_2025_03" -> Color(252, 247, 255)
 	"online_banner_2025_04" -> Color(120, 71, 82)
+	"online_banner_2025_05" -> Color(98, 58, 81)
 	else -> null
 } ?: Color.White
 

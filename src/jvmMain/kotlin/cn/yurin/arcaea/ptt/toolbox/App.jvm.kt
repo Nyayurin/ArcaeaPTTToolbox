@@ -17,9 +17,10 @@ import javax.imageio.ImageIO
 actual fun BoxWithScrollbar(
 	verticalState: ScrollState,
 	horizontalState: ScrollState,
+	modifier: Modifier,
 	content: @Composable () -> Unit
 ) {
-	Box {
+	Box(modifier = modifier) {
 		content()
 		VerticalScrollbar(
 			adapter = rememberScrollbarAdapter(verticalState),

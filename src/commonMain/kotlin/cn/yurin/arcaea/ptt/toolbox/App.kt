@@ -88,6 +88,7 @@ fun App() {
 expect fun BoxWithScrollbar(
 	verticalState: ScrollState,
 	horizontalState: ScrollState,
+	modifier: Modifier,
 	content: @Composable () -> Unit
 )
 

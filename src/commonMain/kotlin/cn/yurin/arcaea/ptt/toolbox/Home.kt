@@ -25,8 +25,8 @@ fun Home(onChangePage: (Page) -> Unit) {
 	var loading by remember { mutableStateOf(false) }
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
-	) {
-		Box {
+	) { paddingValues ->
+		Box(modifier = Modifier.padding(paddingValues)) {
 			Column(
 				horizontalAlignment = Alignment.CenterHorizontally,
 				verticalArrangement = Arrangement.spacedBy(8.dp)
