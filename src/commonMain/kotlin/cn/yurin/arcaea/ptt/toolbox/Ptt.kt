@@ -50,6 +50,7 @@ val dateTimeFormat = LocalDateTime.Format {
 	second()
 }
 
+@Suppress("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun PTT(user: User, onBack: () -> Unit) {
 	var user by remember { mutableStateOf(user) }
@@ -74,13 +75,10 @@ fun PTT(user: User, onBack: () -> Unit) {
 	BackHandler(onBack)
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
-	) { paddingValues ->
+	) {
 		BoxWithScrollbar(
 			verticalState = verticalScrollState,
-			horizontalState = horizontalScrollState,
-			modifier = Modifier
-				.fillMaxSize()
-				.padding(paddingValues)
+			horizontalState = horizontalScrollState
 		) {
 			Column {
 				TopBar(

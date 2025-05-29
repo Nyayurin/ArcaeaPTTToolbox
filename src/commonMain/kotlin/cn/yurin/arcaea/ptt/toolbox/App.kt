@@ -31,7 +31,7 @@ val client = HttpClient {
 
 val settings = Settings()
 
-var sid by mutableStateOf<String?>(settings.getStringOrNull("sid"))
+var sid by mutableStateOf(settings.getStringOrNull("sid"))
 
 fun save(sid: String?) {
 	settings["sid"] = sid
@@ -58,8 +58,8 @@ fun App() {
 					slideIn { IntOffset((targetState.index - initialState.index) * it.width, 0) }
 						.togetherWith(slideOut { IntOffset(-(targetState.index - initialState.index) * it.width, 0) })
 				}
-			) {
-				when (it) {
+			) { state ->
+				when (state) {
 					Page.Home -> {
 						Home(
 							onChangePage = { page = it }
@@ -74,7 +74,7 @@ fun App() {
 
 					is Page.PTT -> {
 						PTT(
-							user = it.user,
+							user = state.user,
 							onBack = { page = Page.Home }
 						)
 					}
@@ -88,7 +88,6 @@ fun App() {
 expect fun BoxWithScrollbar(
 	verticalState: ScrollState,
 	horizontalState: ScrollState,
-	modifier: Modifier,
 	content: @Composable () -> Unit
 )
 

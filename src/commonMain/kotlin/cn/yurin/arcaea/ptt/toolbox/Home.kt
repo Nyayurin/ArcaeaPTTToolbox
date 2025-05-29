@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
+@Suppress("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun Home(onChangePage: (Page) -> Unit) {
 	val scope = rememberCoroutineScope()
@@ -25,8 +26,8 @@ fun Home(onChangePage: (Page) -> Unit) {
 	var loading by remember { mutableStateOf(false) }
 	Scaffold(
 		snackbarHost = { SnackbarHost(snackBarState) }
-	) { paddingValues ->
-		Box(modifier = Modifier.padding(paddingValues)) {
+	) {
+		Box {
 			Column(
 				horizontalAlignment = Alignment.CenterHorizontally,
 				verticalArrangement = Arrangement.spacedBy(8.dp)
