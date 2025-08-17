@@ -6,6 +6,6 @@ build/
 *.ipr
 .kotlin
 kotlin-js-store
-assets
+local.properties
 /ArcaeaPTTToolbox.jks
 /cache
