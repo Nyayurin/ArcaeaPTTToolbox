@@ -102,6 +102,8 @@ android {
 		assets.setSrcDirs(listOf("src/main@android/assets"))
 		baselineProfiles.setSrcDirs(listOf("src/main@android/baselineProfiles"))
 		shaders.setSrcDirs(listOf("src/main@android/shaders"))
+
+		manifest.srcFile("src/main@android/AndroidManifest.xml")
 	}
 
 	signingConfigs {
