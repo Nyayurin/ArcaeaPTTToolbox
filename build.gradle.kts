@@ -9,7 +9,6 @@ plugins {
 	id("org.jetbrains.compose") version "1.8.2"
 	id("com.android.application") version "8.11.0"
 	kotlin("plugin.serialization") version "2.1.0"
-	id("com.goncalossilva.resources") version "0.10.1"
 }
 
 repositories {
@@ -54,7 +53,6 @@ kotlin {
 				implementation("io.ktor:ktor-serialization-kotlinx-json:3.2.3")
 				implementation("com.russhwolf:multiplatform-settings:1.3.0")
 				implementation("com.russhwolf:multiplatform-settings-no-arg:1.3.0")
-				implementation("com.goncalossilva:resources:0.10.1")
 			}
 		}
 

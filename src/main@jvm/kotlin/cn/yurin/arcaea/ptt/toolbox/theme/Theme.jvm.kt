@@ -12,7 +12,9 @@ import java.io.File
 actual fun typography(defaultTypography: Typography, setTypography: (Typography) -> Unit) {
 	val fontFamily = FontFamily(
 		Font(
-			file = File("font/MapleMono-NF-CN-Regular.ttf"),
+			file = File(
+				Thread.currentThread().contextClassLoader.getResource("font/MapleMono-NF-CN-Regular.ttf")!!.path
+			),
 			weight = FontWeight.Normal,
 			style = FontStyle.Normal
 		)
