@@ -35,6 +35,8 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
 import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.ceil
+import kotlin.math.min
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -535,19 +537,20 @@ fun PTTRow(left: String, right: String) {
 }
 
 @Composable
-fun TrackList(list: List<User.Track>, onDialog: (PTTDialog.Track) -> Unit) {
+fun ColumnScope.TrackList(list: List<User.Track>, onDialog: (PTTDialog.Track) -> Unit) {
 	Column(
-		verticalArrangement = Arrangement.spacedBy(16.dp)
+		verticalArrangement = Arrangement.spacedBy(16.dp),
+		modifier = Modifier.align(Alignment.Start)
 	) {
-		repeat(list.size / 5) { y ->
+		repeat(ceil(list.size / 5.0).toInt()) { y ->
 			Row(
 				horizontalArrangement = Arrangement.spacedBy(16.dp)
 			) {
-				for (x in 0 until 5) {
+				for (x in 0 until min(5, list.size - y * 5)) {
 					val index = y * 5 + x
 					TrackCard(
 						index = index,
-						track = list[y * 5 + x],
+						track = list[index],
 						onDialog = onDialog
 					)
 				}
